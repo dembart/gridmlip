@@ -1,0 +1,233 @@
+import numpy as np
+from tqdm import tqdm
+from ase.io import read, write, cube
+from .utils import read_cfg, write_cfg
+from ._neighborhood import nn_list
+from ._percolation_analysis import Percolyze
+
+
+
+__version__ = "0.1"
+
+
+
+class Grid:
+
+    def __init__(self, atoms, specie = None, resolution = 0.2, r_cut = 5.0, r_min = 1.8):
+
+        """ 
+        Initialization. 
+
+        Parameters
+        ----------
+        
+        atoms: ASE's Atoms object
+            atomic structure
+
+        specie: int
+            atomic number of the mobile specie
+
+        resolution: float, 0.2 by default
+            spacing between points (in Angstroms)
+
+        r_cut: float
+            cutoff radius to find the first nearest neighbor for each grid point
+
+        r_min: float
+            blocking sphere radius
+        """
+        self.atoms = atoms.copy()
+        self.specie = specie
+        self.resolution = resolution
+        self.cell = self.atoms.cell
+        self._mesh(resolution)
+        self.base = self.atoms[self.atoms.numbers != self.specie]
+        self.min_dists, _ = nn_list(self.base.positions, self.mesh_cart, r_cut, self.cell)
+        self.r_cut = r_cut
+        self.r_min = r_min
+
+
+
+    def _mesh(self, resolution):
+        
+        """ 
+        This method creates grid of equidistant points in 3D
+        with respect to the input resolution. 
+
+        Parameters
+        ----------
+        resolution: float, 0.2 by default
+            spacing between points (in Angstroms)
+
+        Returns
+        -------
+        mesh_cart: np.array
+            cartesian coordinates of meshgrid
+        
+        """
+        
+        a, b, c, _, _, _ = self.cell.cellpar()
+        nx, ny, nz = int(a // resolution), int(b // resolution), int(c // resolution)
+        x = np.linspace(0, 1, nx) 
+        y = np.linspace(0, 1, ny) 
+        z = np.linspace(0, 1, nz)
+        self.mesh_frac = np.stack(np.meshgrid(x, y, z, indexing='ij'), axis=-1).reshape(-1, 3)
+        self.mesh_cart = self.cell.cartesian_positions(self.mesh_frac)
+        self.size = (nx, ny, nz)
+        return self.mesh_cart
+
+
+
+    @classmethod
+    def from_file(cls, file, specie = None, resolution = 0.2, r_cut = 5.0, r_min = 1.8):
+        """ 
+        Create Grid object from the file.
+
+        Parameters
+        ----------
+        
+        file: string
+            .xyz of .cfg file representing atomic structure
+
+        specie: int
+            atomic number of the mobile specie
+
+        resolution: float, 0.2 by default
+            spacing between points (in Angstroms)
+
+        r_cut: float
+            cutoff radius to find the first nearest neighbor for each grid point
+
+        r_min: float
+            blocking sphere radius
+
+        Returns
+        -------
+        Grid object
+        """
+
+        if file.split('.')[-1] == 'cfg':
+            atoms = read_cfg(file)[0]
+        else:
+            atoms = read(file)
+        return cls(atoms, specie, resolution=resolution, r_cut = r_cut, r_min = r_min)
+
+
+
+    def construct_configurations(self, filename = None):
+        """ 
+        Construct atomic configurations for further calculations.
+
+        Parameters
+        ----------
+        
+        filename: string (Optional)
+            path to save .xyz of .cfg file with atomic configurations
+        
+        Returns
+        -------
+        configurations: list of ASE's atoms object
+        """
+        
+        configurations = []
+        for p, d in tqdm(zip(self.mesh_cart, self.min_dists), desc = 'creating configurations'):
+            if d > self.r_min:
+                framework = self.base.copy()
+                framework.append(self.specie)
+                framework.positions[-1] = p
+                configurations.append(framework)
+
+        if filename:
+            if filename.split('.')[-1] == 'cfg':
+                write_cfg(filename, configurations)
+            else:
+                write(filename, configurations)
+        return configurations
+
+
+
+    def read_processed_configurations(self, filename, format = 'xyz'):
+
+        """ 
+        Read processed (by any MLIP) atomic configurations
+        with calculated energies.
+
+        Parameters
+        ----------
+        
+        filename: string
+            path to the processed .xyz of .cfg file
+        """
+
+        if format == 'cfg':
+            atoms_list = read_cfg(filename)
+        else:
+            atoms_list = read(filename, index = ':')
+        self.energies = np.array([atoms.get_potential_energy() for atoms in atoms_list])
+        del atoms_list
+        self.distribution = np.zeros_like(self.min_dists)
+        self.distribution[self.min_dists > self.r_min] = self.energies
+        self.distribution = np.nan_to_num(self.distribution, copy = False, nan = np.inf)
+        self.data = self.distribution.reshape(self.size)
+
+
+
+    def write_cube(self, filename):
+
+        """
+        Write .cube file containing structural and MLIP distribution data.
+
+        Parameters
+        ----------
+
+        filename: str
+            file name to write .cube
+        """
+
+        data = self.data
+        nx, ny, nz = data.shape
+        with open(f'{filename}.cube', 'w') as f:
+            cube.write_cube(f, self.atoms, data = data[:nx-1, :ny-1, :nz-1])
+    
+
+
+    def write_grd(self, filename):
+        
+        """
+        Write MLIP distribution volumetric file for VESTA 3.0.
+
+        Parameters
+        ----------
+
+        filename: str
+            file name to write .grd
+        """
+
+        
+        data = self.data
+        voxels = data.shape[0] - 1, data.shape[1] - 1, data.shape[2] - 1
+        cellpars = self.cell.cellpar()
+        with open(f'{filename}.grd' , 'w') as report:
+            comment = '# MLIP data made with gridmlip package: https://github.com/dembart/BVlain'
+            report.write(comment + '\n')
+            report.write(''.join(str(p) + ' ' for p in cellpars).strip() + '\n')
+            report.write(''.join(str(v) + ' ' for v in voxels).strip() + '\n')
+            for i in range(voxels[0]):
+                for j in range(voxels[1]):
+                    for k in range(voxels[2]):
+                        val = data[i, j, k]
+                        report.write(str(val) + '\n')
+
+
+
+    def percolation_barriers(self, encut = 10.0):
+        """
+        Calculate percolation barriers.
+
+        Parameters
+        ----------
+        encut: float, 10.0 by default
+            upper bound for searching the barrier
+        """
+        pl = Percolyze(self.data)
+        return pl.percolation_barriers(encut = encut)
