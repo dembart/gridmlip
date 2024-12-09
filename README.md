@@ -29,7 +29,7 @@ pip install .
 from gridmlip import Grid
 
 atomic_types_mapper = {3:0, 31:1, 17: 2}
-g = Grid.from_file('1.cif', specie = 3, r_min  = 1.8, atomic_types_mapper=atomic_types_mapper)
+g = Grid.from_file('1.cif', specie = 3, r_min = 1.8, atomic_types_mapper=atomic_types_mapper)
 _ = g.construct_configurations('data.cfg')
 del _
 
@@ -46,7 +46,7 @@ mlp calculate_efs p.mtp data.cfg --output_filename=processed_data.cfg'
 ```python
 from gridmlip import Grid
 
-g = Grid.from_file('1.cif', specie = 3, r_min  = 1.8)
+g = Grid.from_file('1.cif', specie = 3, r_min = 1.8)
 g.read_processed_configurations('processed_data.cfg_0', format = 'cfg')
 g.percolation_barriers()
 ```
