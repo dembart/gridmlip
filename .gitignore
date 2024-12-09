@@ -4,8 +4,10 @@
 gridmlip/__pycache__/*
 *.png
 *.cfg
+!setup.cfg
 *.cif
 *.xyz
+test
 
 
 # Byte-compiled / optimized / DLL files
