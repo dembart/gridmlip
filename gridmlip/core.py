@@ -13,7 +13,8 @@ __version__ = "0.1"
 
 class Grid:
 
-    def __init__(self, atoms, specie = None, resolution = 0.2, r_cut = 5.0, r_min = 1.8):
+    def __init__(self, atoms, specie = None, resolution = 0.2,
+                 r_cut = 5.0, r_min = 1.8, atomic_types_mapper = None):
 
         """ 
         Initialization. 
@@ -36,6 +37,11 @@ class Grid:
         r_min: float
             blocking sphere radius
         """
+        if atomic_types_mapper:
+            numbers = self._map_atomic_types(atomic_types_mapper, atoms.numbers)
+            atoms = atoms.copy()
+            atoms.numbers = numbers
+            specie = atomic_types_mapper[specie]
         self.atoms = atoms.copy()
         self.specie = specie
         self.resolution = resolution
@@ -45,6 +51,12 @@ class Grid:
         self.min_dists, _ = nn_list(self.base.positions, self.mesh_cart, r_cut, self.cell)
         self.r_cut = r_cut
         self.r_min = r_min
+
+
+
+    def _map_atomic_types(self, atomic_types_mapper, numbers):
+        u,inv = np.unique(numbers,return_inverse = True)
+        return np.array([atomic_types_mapper[x] for x in u])[inv].reshape(numbers.shape)
 
 
 
@@ -79,7 +91,8 @@ class Grid:
 
 
     @classmethod
-    def from_file(cls, file, specie = None, resolution = 0.2, r_cut = 5.0, r_min = 1.8):
+    def from_file(cls, file, specie = None, resolution = 0.2,
+                  r_cut = 5.0, r_min = 1.8, atomic_types_mapper = None):
         """ 
         Create Grid object from the file.
 
@@ -110,7 +123,8 @@ class Grid:
             atoms = read_cfg(file)[0]
         else:
             atoms = read(file)
-        return cls(atoms, specie, resolution=resolution, r_cut = r_cut, r_min = r_min)
+        return cls(atoms, specie, resolution=resolution,
+                   r_cut = r_cut, r_min = r_min, atomic_types_mapper =  atomic_types_mapper)
 
 
 
@@ -165,7 +179,7 @@ class Grid:
             atoms_list = read(filename, index = ':')
         self.energies = np.array([atoms.get_potential_energy() for atoms in atoms_list])
         del atoms_list
-        self.distribution = np.zeros_like(self.min_dists)
+        self.distribution = np.ones_like(self.min_dists) * np.inf
         self.distribution[self.min_dists > self.r_min] = self.energies
         self.distribution = np.nan_to_num(self.distribution, copy = False, nan = np.inf)
         self.data = self.distribution.reshape(self.size)

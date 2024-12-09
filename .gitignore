@@ -4,6 +4,9 @@
 gridmlip/__pycache__/*
 *.png
 *.cfg
+*.cfg_0
+*.grd
+*.cube
 !setup.cfg
 *.cif
 *.xyz

@@ -24,33 +24,34 @@ pip install .
 
 ## How to use
 
-### Step #1: Construct configurations for processing with your favorite MLIP
+#### Step #1: Construct configurations for processing with your favorite MLIP
 ```python
 from gridmlip import Grid
 
-g = Grid.from_file('test.cfg', specie = 3)
+atomic_types_mapper = {3:0, 31:1, 17: 2}
+g = Grid.from_file('1.cif', specie = 3, r_min  = 1.8, atomic_types_mapper=atomic_types_mapper)
 _ = g.construct_configurations('data.cfg')
 del _
 
 ```
 
-### Step #2: Evaluate the configurations with your favorite MLIP
+#### Step #2: Evaluate the configurations with your favorite MLIP
 
 ```
 mlp calculate_efs p.mtp data.cfg --output_filename=processed_data.cfg'
 ```
 
-### Step #3: Read processed configrations and calculate the percolation barriers
+#### Step #3: Read processed configrations and calculate the percolation barriers
 
 ```python
 from gridmlip import Grid
 
-g = Grid.from_file('test.cfg', specie = 3)
-g.read_processed_configurations('processed_data.cfg', format = 'cfg')
+g = Grid.from_file('1.cif', specie = 3, r_min  = 1.8)
+g.read_processed_configurations('processed_data.cfg_0', format = 'cfg')
 g.percolation_barriers()
 ```
 
-### Step #4: Write .grd or .cube file for visualization in VESTA 3.0
+#### Step #4: Write .grd or .cube file for visualization in VESTA 3.0
 
 ```python
 g.write_grd('test.grd')
