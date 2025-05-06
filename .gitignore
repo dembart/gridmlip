@@ -1,14 +1,16 @@
 *.ipynb
-
+!notebooks/*.ipynb
+*grd
 
 gridmlip/__pycache__/*
 *.png
 *.cfg
+!setup.cfg
 *.cfg_0
 *.grd
 *.cube
-!setup.cfg
 *.cif
+!example_files/*.cif
 *.xyz
 test
 

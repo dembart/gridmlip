@@ -13,8 +13,8 @@ __version__ = "0.1"
 
 class Grid:
 
-    def __init__(self, atoms, specie = None, resolution = 0.2,
-                 r_cut = 5.0, r_min = 1.8, atomic_types_mapper = None):
+    def __init__(self, atoms, specie = None, resolution = 0.25,
+                 r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None):
 
         """ 
         Initialization. 
@@ -36,7 +36,11 @@ class Grid:
 
         r_min: float
             blocking sphere radius
+
+        atomic_types_mapper: dict, optional
+            mapper of atomic numbers into species used by MLIP
         """
+
         if atomic_types_mapper:
             numbers = self._map_atomic_types(atomic_types_mapper, atoms.numbers)
             atoms = atoms.copy()
@@ -91,8 +95,8 @@ class Grid:
 
 
     @classmethod
-    def from_file(cls, file, specie = None, resolution = 0.2,
-                  r_cut = 5.0, r_min = 1.8, atomic_types_mapper = None):
+    def from_file(cls, file, specie = None, resolution = 0.25,
+                  r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None):
         """ 
         Create Grid object from the file.
 
@@ -113,6 +117,9 @@ class Grid:
 
         r_min: float
             blocking sphere radius
+
+        atomic_types_mapper: dict, optional
+            mapper of the species into atomic numbers
 
         Returns
         -------
@@ -158,6 +165,26 @@ class Grid:
                 write(filename, configurations)
         return configurations
 
+
+
+    def load_energies(self, energies):
+
+        """ 
+        Load energies obtained by any MLIP or structure-to-property model.
+        Should match order in created configurations.
+
+        Parameters
+        ----------
+        
+        energies: np.array
+            calculated energies for the created configurations
+        """
+
+        self.energies = energies
+        self.distribution = np.ones_like(self.min_dists) * np.inf
+        self.distribution[self.min_dists > self.r_min] = self.energies
+        self.distribution = np.nan_to_num(self.distribution, copy = False, nan = np.inf)
+        self.data = self.distribution.reshape(self.size)
 
 
     def read_processed_configurations(self, filename, format = 'xyz'):
@@ -222,7 +249,7 @@ class Grid:
         voxels = data.shape[0] - 1, data.shape[1] - 1, data.shape[2] - 1
         cellpars = self.cell.cellpar()
         with open(f'{filename}.grd' , 'w') as report:
-            comment = '# MLIP data made with gridmlip package: https://github.com/dembart/BVlain'
+            comment = '# MLIP data made with gridmlip package: https://github.com/dembart/gridmlip'
             report.write(comment + '\n')
             report.write(''.join(str(p) + ' ' for p in cellpars).strip() + '\n')
             report.write(''.join(str(v) + ' ' for v in voxels).strip() + '\n')
