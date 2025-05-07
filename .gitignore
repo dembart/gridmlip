@@ -13,6 +13,7 @@ gridmlip/__pycache__/*
 !example_files/*.cif
 *.xyz
 test
+*.txt
 
 
 # Byte-compiled / optimized / DLL files
