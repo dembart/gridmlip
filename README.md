@@ -68,7 +68,8 @@ g.write_grd('test.grd')
 ## Notebooks
 
 
-- [Using TensorNet model pre-trained on MatPES](notebooks/TensorNet_MatPES.ipynb) 
+- [Using TensorNet model pre-trained on MatPES](notebooks/TensorNet_MatPES.ipynb)    
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/14gabZ-u19K-_I_e7-g67N8-xtPIN36Nw#sandboxMode=true&scrollTo=5TySp6C6UBoZ)
 
 
 ### How to cite
