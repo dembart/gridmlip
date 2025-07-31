@@ -37,7 +37,7 @@ Here we describe the pipeline in general. For a specific example, see [Notebooks
 from gridmlip import Grid
 
 atomic_types_mapper = {3:0, 31:1, 17:2}
-grid = Grid.from_file('your.cif', specie = 3, r_min = 1.8, 
+grig = Grid.from_file('your.cif', specie = 3, r_min = 1.8, 
                     atomic_types_mapper=atomic_types_mapper # optional
                   )
 cfgs = grid.construct_configurations('data.cfg')
