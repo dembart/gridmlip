@@ -14,6 +14,7 @@ gridmlip/__pycache__/*
 *.xyz
 test
 *.txt
+.ipynb_checkpoints
 
 
 # Byte-compiled / optimized / DLL files

@@ -56,7 +56,7 @@ from gridmlip import Grid
 
 grid = Grid.from_file('your.cif', specie = 3, r_min = 1.8)
 grid.read_processed_configurations('processed_data.cfg', format = 'cfg')
-grid.percolation_barriers()
+barriers = grid.percolation_barriers()
 ```
 
 #### Step #4: Write .grd or .cube file for visualization in VESTA 3.0

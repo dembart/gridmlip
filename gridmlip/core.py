@@ -1,20 +1,21 @@
 import numpy as np
 from tqdm import tqdm
 from ase.io import read, write, cube
+from pymatgen.io.ase import AseAtomsAdaptor
 from .utils import read_cfg, write_cfg
 from ._neighborhood import nn_list
 from ._percolation_analysis import Percolyze
 
 
 
-__version__ = "0.1"
+__version__ = "0.1.1"
 
 
 
 class Grid:
 
-    def __init__(self, atoms, specie = None, resolution = 0.25,
-                 r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None):
+    def __init__(self, atoms, specie, resolution = 0.25,
+                 r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None, empty_framework = True):
 
         """ 
         Initialization. 
@@ -39,6 +40,9 @@ class Grid:
 
         atomic_types_mapper: dict, optional
             mapper of atomic numbers into species used by MLIP
+
+        empty_framework: boolean, True by default
+            whether to remove mobile types of interest from the structure
         """
 
         if atomic_types_mapper:
@@ -51,7 +55,7 @@ class Grid:
         self.resolution = resolution
         self.cell = self.atoms.cell
         self._mesh(resolution)
-        self.base = self.atoms[self.atoms.numbers != self.specie]
+        self.base = self.atoms[self.atoms.numbers != self.specie] if empty_framework else atoms.copy()
         self.min_dists, _ = nn_list(self.base.positions, self.mesh_cart, r_cut, self.cell)
         self.r_cut = r_cut
         self.r_min = r_min
@@ -95,8 +99,8 @@ class Grid:
 
 
     @classmethod
-    def from_file(cls, file, specie = None, resolution = 0.25,
-                  r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None):
+    def from_file(cls, file, specie, resolution = 0.25,
+                  r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None, empty_framework = True):
         """ 
         Create Grid object from the file.
 
@@ -121,6 +125,9 @@ class Grid:
         atomic_types_mapper: dict, optional
             mapper of the species into atomic numbers
 
+        empty_framework: boolean, True by default
+            whether to remove mobile types of interest from the structure
+
         Returns
         -------
         Grid object
@@ -131,11 +138,11 @@ class Grid:
         else:
             atoms = read(file)
         return cls(atoms, specie, resolution=resolution,
-                   r_cut = r_cut, r_min = r_min, atomic_types_mapper =  atomic_types_mapper)
+                   r_cut = r_cut, r_min = r_min, atomic_types_mapper =  atomic_types_mapper, empty_framework=empty_framework)
 
 
 
-    def construct_configurations(self, filename = None):
+    def construct_configurations(self, format = 'ase', filename = None):
         """ 
         Construct atomic configurations for further calculations.
 
@@ -145,20 +152,36 @@ class Grid:
         filename: string (Optional)
             path to save .xyz of .cfg file with atomic configurations
         
+        format: string, "ase" by default, can be "pymatgen" or "ase"
+            data format of the created configurations (pymatgen's Structure of ASE's Atoms)
+
+        
         Returns
         -------
         configurations: list of ASE's atoms object
         """
         
         configurations = []
-        for p, d in tqdm(zip(self.mesh_cart, self.min_dists), desc = 'creating configurations'):
-            if d > self.r_min:
-                framework = self.base.copy()
-                framework.append(self.specie)
-                framework.positions[-1] = p
-                configurations.append(framework)
-
+        if format == 'ase':
+            for p, d in tqdm(zip(self.mesh_cart, self.min_dists), desc = 'creating configurations'):
+                if d > self.r_min:
+                    framework = self.base.copy()
+                    framework.append(self.specie)
+                    framework.positions[-1] = p
+                    configurations.append(framework)
+        elif format == 'pymatgen':
+            base = AseAtomsAdaptor.get_structure(self.base)
+            for p, d in tqdm(zip(self.mesh_frac, self.min_dists), desc = 'creating configurations'):
+                if d > self.r_min:
+                    framework = base.copy()
+                    framework.append(self.specie, coords = p)
+                    configurations.append(framework)
+        else:
+            raise ValueError(f"Wrong format {format}")
+        
         if filename:
+            if format != 'ase':
+                raise ValueError('Only "ase" format is allowed for saving files')
             if filename.split('.')[-1] == 'cfg':
                 write_cfg(filename, configurations)
             else:
