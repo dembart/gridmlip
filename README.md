@@ -15,7 +15,6 @@
 
 **gridmlip** is a library for calculating percolation barriers of mobile species in solids using grid-based method with machine learning interatomic potentials (MLIPs).
 
-
 ## Installation
 
 ```

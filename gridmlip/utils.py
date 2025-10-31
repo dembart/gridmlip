@@ -24,7 +24,7 @@ def read_cfg(filename):
     configurations = []
     for i_s, i_e in tqdm(zip(np.where(np.array(text) == 'BEGIN_CFG\n')[0], np.where(np.array(text) == 'END_CFG\n')[0])):
         subtext = text[i_s:i_e]
-        grade = None
+        grade = None # not used
         results = {}
         for i, line in enumerate(subtext):
             if 'Size' in line:

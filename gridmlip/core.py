@@ -5,18 +5,28 @@ from pymatgen.io.ase import AseAtomsAdaptor
 from .utils import read_cfg, write_cfg
 from ._neighborhood import nn_list
 from ._percolation_analysis import Percolyze
+from ._mesh import Mesh
 
 
 
-__version__ = "0.1.1"
+__author__ = "Artem Dembitskiy"
+__version__ = "0.2"
 
 
 
 class Grid:
 
-    def __init__(self, atoms, specie, resolution = 0.25,
-                 r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None, empty_framework = True):
-
+    def __init__(self,
+                 atoms,
+                 specie,
+                 resolution=0.25,
+                 r_cut=5.0,
+                 r_min=1.5,
+                 symprec=0.1,
+                 atomic_types_mapper= None,
+                 empty_framework=True,
+                 verbose=True,
+                 ):
         """ 
         Initialization. 
 
@@ -41,10 +51,18 @@ class Grid:
         atomic_types_mapper: dict, optional
             mapper of atomic numbers into species used by MLIP
 
+        symprec: None or float, 0.1 by default
+            symmetry precision
+            used to get symmetry operations for finding the irreducible mesh points
+            may reduce number of MLIP calculations by factor of ~10-100
+            if None, the symmetry will not be used.
+
         empty_framework: boolean, True by default
-            whether to remove mobile types of interest from the structure
+            remove mobile types of interest from the structure
         """
 
+        self.symprec = symprec
+        self.verbose = verbose
         if atomic_types_mapper:
             numbers = self._map_atomic_types(atomic_types_mapper, atoms.numbers)
             atoms = atoms.copy()
@@ -54,53 +72,55 @@ class Grid:
         self.specie = specie
         self.resolution = resolution
         self.cell = self.atoms.cell
-        self._mesh(resolution)
-        self.base = self.atoms[self.atoms.numbers != self.specie] if empty_framework else atoms.copy()
-        self.min_dists, _ = nn_list(self.base.positions, self.mesh_cart, r_cut, self.cell)
         self.r_cut = r_cut
         self.r_min = r_min
+        self.base = self.atoms[self.atoms.numbers != self.specie] if empty_framework else atoms.copy()
+        
+        self._mesh = Mesh.from_atoms(self.base,
+                               resolution = self.resolution,
+                               symprec = self.symprec)
+        self.mesh_shape = self._mesh.mesh_shape
+        self.ir_grid_points, self.mapping = self._mesh.get_irreducible_mapping()
+        self.mesh_frac = self._mesh.addresses / (np.array(self._mesh.mesh_shape) - 1)
+        self.mesh_cart = np.dot(self.mesh_frac, self.base.cell)
+        
+        self.min_dists, _ = nn_list(self.base.positions,
+                                    self.mesh_cart[self.ir_grid_points],
+                                    r_cut,
+                                    self.cell)
+        if self.verbose:
+            total_points = self.mesh_frac.shape[0]
+            irreducible_points = self.ir_grid_points.shape[0]
+            passed_filter = (self.min_dists > self.r_min).sum()
+            compression = total_points / passed_filter if passed_filter else np.nan
+        
+            print("Mesh Summary")
+            print("────────────────────────────────────")
+            print(f"  Mesh shape:                         {tuple(self.mesh_shape)}")
+            print(f"  Symops:                             {len(self._mesh.rotations)}")
+            print(f"  Total points:                       {total_points:,}")
+            print(f"  Irreducible points:                 {irreducible_points:,}")
+            print(f"  Irreducible points (r_min filter):  {passed_filter:,}")
+            print(f"  Compression ratio:                  {compression:6.2f}×")
+            print("────────────────────────────────────\n")
 
-
+        
 
     def _map_atomic_types(self, atomic_types_mapper, numbers):
         u,inv = np.unique(numbers,return_inverse = True)
         return np.array([atomic_types_mapper[x] for x in u])[inv].reshape(numbers.shape)
 
-
-
-    def _mesh(self, resolution):
-        
-        """ 
-        This method creates grid of equidistant points in 3D
-        with respect to the input resolution. 
-
-        Parameters
-        ----------
-        resolution: float, 0.2 by default
-            spacing between points (in Angstroms)
-
-        Returns
-        -------
-        mesh_cart: np.array
-            cartesian coordinates of meshgrid
-        
-        """
-        
-        a, b, c, _, _, _ = self.cell.cellpar()
-        nx, ny, nz = int(a // resolution), int(b // resolution), int(c // resolution)
-        x = np.linspace(0, 1, nx) 
-        y = np.linspace(0, 1, ny) 
-        z = np.linspace(0, 1, nz)
-        self.mesh_frac = np.stack(np.meshgrid(x, y, z, indexing='ij'), axis=-1).reshape(-1, 3)
-        self.mesh_cart = self.cell.cartesian_positions(self.mesh_frac)
-        self.size = (nx, ny, nz)
-        return self.mesh_cart
-
-
-
+    
     @classmethod
-    def from_file(cls, file, specie, resolution = 0.25,
-                  r_cut = 5.0, r_min = 1.5, atomic_types_mapper = None, empty_framework = True):
+    def from_file(cls, file,
+                  specie,
+                  resolution = 0.25,
+                  r_cut = 5.0,
+                  r_min = 1.5, 
+                  symprec = 0.1,
+                  atomic_types_mapper = None, 
+                  empty_framework = True,
+                 ):
         """ 
         Create Grid object from the file.
 
@@ -128,6 +148,12 @@ class Grid:
         empty_framework: boolean, True by default
             whether to remove mobile types of interest from the structure
 
+        symprec: None or float, 0.1 by default
+            symmetry precision
+            used to get symmetry operations for finding the irreducible mesh points
+            may reduce number of MLIP calculations by factor of 10-100
+            if None, the symmetry will not be used.
+
         Returns
         -------
         Grid object
@@ -138,11 +164,14 @@ class Grid:
         else:
             atoms = read(file)
         return cls(atoms, specie, resolution=resolution,
-                   r_cut = r_cut, r_min = r_min, atomic_types_mapper =  atomic_types_mapper, empty_framework=empty_framework)
+                   symprec=symprec,
+                   r_cut=r_cut, r_min=r_min, atomic_types_mapper=atomic_types_mapper,
+                   empty_framework=empty_framework
+                  )
 
+    
 
-
-    def construct_configurations(self, format = 'ase', filename = None):
+    def construct_configurations(self, config_format = 'ase', filename = None):
         """ 
         Construct atomic configurations for further calculations.
 
@@ -152,7 +181,7 @@ class Grid:
         filename: string (Optional)
             path to save .xyz of .cfg file with atomic configurations
         
-        format: string, "ase" by default, can be "pymatgen" or "ase"
+        config_format: string, "ase" by default, can be "pymatgen" or "ase"
             data format of the created configurations (pymatgen's Structure of ASE's Atoms)
 
         
@@ -160,27 +189,30 @@ class Grid:
         -------
         configurations: list of ASE's atoms object
         """
-        
+
         configurations = []
-        if format == 'ase':
-            for p, d in tqdm(zip(self.mesh_cart, self.min_dists), desc = 'creating configurations'):
+        if config_format == 'ase':
+            ir_mesh_cart = self.mesh_cart[self.ir_grid_points]
+            assert len(ir_mesh_cart) == len(self.min_dists)
+            for p, d in tqdm(zip(ir_mesh_cart, self.min_dists), desc = 'creating configurations'):
                 if d > self.r_min:
                     framework = self.base.copy()
                     framework.append(self.specie)
                     framework.positions[-1] = p
                     configurations.append(framework)
-        elif format == 'pymatgen':
+        elif config_format == 'pymatgen':
             base = AseAtomsAdaptor.get_structure(self.base)
-            for p, d in tqdm(zip(self.mesh_frac, self.min_dists), desc = 'creating configurations'):
+            ir_mesh_frac = self.mesh_frac[self.ir_grid_points]
+            for p, d in tqdm(zip(ir_mesh_frac, self.min_dists), desc = 'creating configurations'):
                 if d > self.r_min:
                     framework = base.copy()
                     framework.append(self.specie, coords = p)
                     configurations.append(framework)
         else:
-            raise ValueError(f"Wrong format {format}")
+            raise ValueError(f"Wrong config_format {config_format}")
         
         if filename:
-            if format != 'ase':
+            if config_format != 'ase':
                 raise ValueError('Only "ase" format is allowed for saving files')
             if filename.split('.')[-1] == 'cfg':
                 write_cfg(filename, configurations)
@@ -204,13 +236,15 @@ class Grid:
         """
 
         self.energies = energies
-        self.distribution = np.ones_like(self.min_dists) * np.inf
-        self.distribution[self.min_dists > self.r_min] = self.energies
-        self.distribution = np.nan_to_num(self.distribution, copy = False, nan = np.inf)
-        self.data = self.distribution.reshape(self.size)
+        
+        ir_distribution = np.ones_like(self.min_dists) * np.inf
+        ir_distribution[self.min_dists > self.r_min] = self.energies
+        
+        self.distribution = np.nan_to_num(ir_distribution, copy = False, nan = np.inf)[self.mapping]
+        self.data = self.distribution.reshape(self.mesh_shape)
 
 
-    def read_processed_configurations(self, filename, format = 'xyz'):
+    def read_processed_configurations(self, filename, file_format = 'xyz'):
 
         """ 
         Read processed (by any MLIP) atomic configurations
@@ -221,18 +255,20 @@ class Grid:
         
         filename: string
             path to the processed .xyz of .cfg file
+
+        file_format: string, 'xyz' by default
+            format of the file
+            if 'cfg' will use custom function read_cfg() to read MLIP 2.0 generated data
+            otherwise will use ASE's read()
         """
 
-        if format == 'cfg':
+        if file_format == 'cfg':
             atoms_list = read_cfg(filename)
         else:
             atoms_list = read(filename, index = ':')
-        self.energies = np.array([atoms.get_potential_energy() for atoms in atoms_list])
+        energies = np.array([atoms.get_potential_energy() for atoms in atoms_list])
         del atoms_list
-        self.distribution = np.ones_like(self.min_dists) * np.inf
-        self.distribution[self.min_dists > self.r_min] = self.energies
-        self.distribution = np.nan_to_num(self.distribution, copy = False, nan = np.inf)
-        self.data = self.distribution.reshape(self.size)
+        self.load_energies(energies)
 
 
 

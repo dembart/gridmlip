@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='gridmlip',  
-     version='0.1.1',
+     version='0.2',
      py_modules = ["gridmlip"],
      install_requires = [
                          "pandas",
@@ -18,7 +18,7 @@ setuptools.setup(
      author="Artem Dembitskiy",
      author_email="art.dembitskiy@gmail.com",
      description="Grid-based method for calculating the percolation barrier of mobile species using machine learning interatomic potentials",
-     key_words = ['percolation-barrier', 'umlip', 'conductivity', 'diffusion'],
+     key_words = ['percolation-barrier', 'UMLIP', 'ionic conductivity', 'diffusion'],
      long_description=long_description,
      long_description_content_type="text/markdown",
      url="https://github.com/dembart/gridmlip",
