@@ -2,6 +2,8 @@
 !notebooks/*.ipynb
 *grd
 
+data
+
 gridmlip/__pycache__/*
 *.png
 *.cfg

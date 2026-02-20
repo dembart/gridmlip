@@ -1,7 +1,9 @@
+from dataclasses import dataclass, field
 import numpy as np
 from tqdm import tqdm
+
 from ase.io import read, write, cube
-from pymatgen.io.ase import AseAtomsAdaptor
+
 from .utils import read_cfg, write_cfg
 from ._neighborhood import nn_list
 from ._percolation_analysis import Percolyze
@@ -10,71 +12,77 @@ from ._mesh import Mesh
 
 
 __author__ = "Artem Dembitskiy"
-__version__ = "0.2"
 
 
-
+@dataclass
 class Grid:
+    """
+    Grid object representing a mesh for atomic structures.
 
-    def __init__(self,
-                 atoms,
-                 specie,
-                 resolution=0.25,
-                 r_cut=5.0,
-                 r_min=1.5,
-                 symprec=0.1,
-                 atomic_types_mapper= None,
-                 empty_framework=True,
-                 verbose=True,
-                 ):
-        """ 
-        Initialization. 
-
-        Parameters
-        ----------
+    Parameters
+    ----------
+    atoms : ASE Atoms object
+        Atomic structure.
         
-        atoms: ASE's Atoms object
-            atomic structure
+    specie : int
+        Atomic number of the mobile specie.
+        
+    resolution : float, default 0.25
+        Spacing between points (in Angstroms).
+        
+    r_cut : float, default 5.0
+        Cutoff radius to find the first nearest neighbor for each grid point.
+        
+    r_min : float, default 1.5
+        Blocking sphere radius.
+        
+    atomic_types_mapper : dict, optional
+        Mapper of atomic numbers into species used by MLIP.
+        
+    symprec : float or None, default 0.1
+        Symmetry precision for irreducible mesh points.
+        
+    empty_framework : bool, default True
+        Remove mobile types of interest from the structure.
+        
+    verbose : bool, default True
+        Print detailed output during mesh generation.
+        
+    """
+    
+    atoms: object
+    specie: int
+    resolution: float = 0.25
+    r_cut: float = 5.0
+    r_min: float = 1.5
+    symprec: float = 0.1
+    atomic_types_mapper: dict = None
+    empty_framework: bool = True
+    verbose: bool = True
 
-        specie: int
-            atomic number of the mobile specie
+    cell: object = field(init=False)
+    base: object = field(init=False)
+    _mesh: object = field(default=None, init=False)
 
-        resolution: float, 0.2 by default
-            spacing between points (in Angstroms)
-
-        r_cut: float
-            cutoff radius to find the first nearest neighbor for each grid point
-
-        r_min: float
-            blocking sphere radius
-
-        atomic_types_mapper: dict, optional
-            mapper of atomic numbers into species used by MLIP
-
-        symprec: None or float, 0.1 by default
-            symmetry precision
-            used to get symmetry operations for finding the irreducible mesh points
-            may reduce number of MLIP calculations by factor of ~10-100
-            if None, the symmetry will not be used.
-
-        empty_framework: boolean, True by default
-            remove mobile types of interest from the structure
-        """
-
-        self.symprec = symprec
-        self.verbose = verbose
-        if atomic_types_mapper:
-            numbers = self._map_atomic_types(atomic_types_mapper, atoms.numbers)
-            atoms = atoms.copy()
-            atoms.numbers = numbers
-            specie = atomic_types_mapper[specie]
-        self.atoms = atoms.copy()
-        self.specie = specie
-        self.resolution = resolution
+    
+    def __post_init__(self):
+        
+        if self.atomic_types_mapper:
+            numbers = self._map_atomic_types(self.atomic_types_mapper, self.atoms.numbers)
+            self.atoms = self.atoms.copy()
+            self.atoms.numbers = numbers
+            self.specie = self.atomic_types_mapper[self.specie]
+        self.atoms = self.atoms.copy()
         self.cell = self.atoms.cell
-        self.r_cut = r_cut
-        self.r_min = r_min
-        self.base = self.atoms[self.atoms.numbers != self.specie] if empty_framework else atoms.copy()
+        self.base = self.atoms[self.atoms.numbers != self.specie] if self.empty_framework else self.atoms.copy()
+
+    def __repr__(self):
+        return (f"Grid(atoms='{self.atoms.symbols}', specie={self.specie}, "
+                f"resolution={self.resolution}, r_cut={self.r_cut}, "
+                f"r_min={self.r_min}, symprec={self.symprec}, "
+                f"empty_framework={self.empty_framework})")
+    
+    def generate_mesh(self):      
         
         self._mesh = Mesh.from_atoms(self.base,
                                resolution = self.resolution,
@@ -86,7 +94,7 @@ class Grid:
         
         self.min_dists, _ = nn_list(self.base.positions,
                                     self.mesh_cart[self.ir_grid_points],
-                                    r_cut,
+                                    self.r_cut,
                                     self.cell)
         if self.verbose:
             total_points = self.mesh_frac.shape[0]
@@ -120,6 +128,7 @@ class Grid:
                   symprec = 0.1,
                   atomic_types_mapper = None, 
                   empty_framework = True,
+                  verbose=False
                  ):
         """ 
         Create Grid object from the file.
@@ -164,13 +173,13 @@ class Grid:
         else:
             atoms = read(file)
         return cls(atoms, specie, resolution=resolution,
-                   symprec=symprec,
-                   r_cut=r_cut, r_min=r_min, atomic_types_mapper=atomic_types_mapper,
-                   empty_framework=empty_framework
+                   symprec=symprec, r_cut=r_cut, r_min=r_min,
+                   atomic_types_mapper=atomic_types_mapper,
+                   empty_framework=empty_framework, verbose=verbose
                   )
 
-    
 
+    
     def construct_configurations(self, config_format = 'ase', filename = None):
         """ 
         Construct atomic configurations for further calculations.
@@ -190,8 +199,12 @@ class Grid:
         configurations: list of ASE's atoms object
         """
 
+        if self._mesh is None:
+            self.generate_mesh()
+        
         configurations = []
         if config_format == 'ase':
+
             ir_mesh_cart = self.mesh_cart[self.ir_grid_points]
             assert len(ir_mesh_cart) == len(self.min_dists)
             for p, d in tqdm(zip(ir_mesh_cart, self.min_dists), desc = 'creating configurations'):
@@ -200,7 +213,10 @@ class Grid:
                     framework.append(self.specie)
                     framework.positions[-1] = p
                     configurations.append(framework)
+                    
         elif config_format == 'pymatgen':
+
+            from pymatgen.io.ase import AseAtomsAdaptor
             base = AseAtomsAdaptor.get_structure(self.base)
             ir_mesh_frac = self.mesh_frac[self.ir_grid_points]
             for p, d in tqdm(zip(ir_mesh_frac, self.min_dists), desc = 'creating configurations'):
@@ -209,6 +225,7 @@ class Grid:
                     framework.append(self.specie, coords = p)
                     configurations.append(framework)
         else:
+            
             raise ValueError(f"Wrong config_format {config_format}")
         
         if filename:
@@ -234,6 +251,9 @@ class Grid:
         energies: np.array
             calculated energies for the created configurations
         """
+
+        if self._mesh is None:
+            self.generate_mesh()
 
         self.energies = energies
         
@@ -320,14 +340,36 @@ class Grid:
 
 
 
-    def percolation_barriers(self, encut = 10.0):
+    def percolation_barriers(self, encut=10.0, n_jobs=1, backend='threading'):
         """
-        Calculate percolation barriers.
+        Find percolation energy and dimensionality of a migration network.
 
         Parameters
         ----------
-        encut: float, 10.0 by default
-            upper bound for searching the barrier
+
+        encut: float, 5.0 by default
+            cutoff energy above which barriers supposed to be np.inf
+
+        n_jobs: int, 1 by default
+            number of jobs to run for percolation energy search
+
+        backend: str, 'threading' by default
+            see joblib's documentations for more details
+
+        Returns
+        ----------
+        
+        energies: dict
+            infromation about percolation {'e1d': float, 'e2d': float, 'e3d': float}
         """
         pl = Percolyze(self.data)
-        return pl.percolation_barriers(encut = encut)
+        return pl.percolation_barriers(encut = encut, n_jobs=n_jobs, backend=backend)
+
+
+        
+    def __repr__(self):
+        return (
+            f'Grid(atoms={self.atoms.symbols}, specie={self.specie}, '
+            f'resolution={self.resolution}, r_cut={self.r_cut}, '
+            f'r_min={self.r_min}, symprec={self.symprec})'
+        )

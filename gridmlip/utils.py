@@ -8,7 +8,7 @@ from ase.calculators.singlepoint import SinglePointCalculator
 def read_cfg(filename):
 
     """
-    Read .cfg file format used in MLIP package
+    Read .cfg file format used in MLIP 2.0 package
 
     Parameters
     ----------
@@ -61,6 +61,7 @@ def read_cfg(filename):
         atoms.calc = calc
         configurations.append(atoms)
     return configurations
+
 
 
 def write_cfg(filename, atoms_list):

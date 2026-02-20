@@ -13,7 +13,7 @@
 
 ## About
 
-**gridmlip** is a library for calculating percolation barriers of mobile species in solids using grid-based method with machine learning interatomic potentials (MLIPs).
+**gridmlip** is a library for the symmetry-aware grid-based sampling of the energy landscape of mobile species in solids using machine learning interatomic potentials (MLIPs).
 
 ## Installation
 
@@ -31,44 +31,52 @@ pip install .
 ## How to use
 Here we describe the pipeline in general. For a specific example, see [Notebooks](#notebooks).
 
-#### Step #1: Construct configurations for processing with your favorite MLIP
-```python
+```python 
 from gridmlip import Grid
+from gridmlip.integrations.sevennet import evaluate_atoms_list # sevenn must be installed
 
-atomic_types_mapper = {3:0, 31:1, 17:2}
-grid = Grid.from_file('your.cif', specie = 3, r_min = 1.8, 
-                    atomic_types_mapper=atomic_types_mapper # optional
-                  )
-cfgs = grid.construct_configurations('data.cfg')
-```
+file = './data/Li10Ge(PS6)2_mp.cif'
+specie = 3
 
-#### Step #2: Evaluate the configurations with your favorite MLIP
+### Create grid
+g = Grid.from_file(
+    file,
+    specie,
+    r_min=0.8,
+    resolution=0.2,
+    symprec=0.1,
+    empty_framework=True,
+    verbose=True
+)
 
-```
-mlp calculate_efs p.mtp data.cfg --output_filename=processed_data.cfg'
-```
+### Prepare inequivalent atomic configurations
+atoms_list = g.construct_configurations(config_format='ase')
 
-#### Step #3: Read processed configrations and calculate the percolation barriers
+### Predict energies
+energy_list, forces_list = evaluate_atoms_list(
+    atoms_list,
+    model_path='.data/checkpoint_sevennet_0.pth',
+    device='cuda',
+    compute_force=False,
+    batch_size=256
+)
 
-```python
-from gridmlip import Grid
+### Load energies
+g.load_energies(energy_list)
 
-grid = Grid.from_file('your.cif', specie = 3, r_min = 1.8)
-grid.read_processed_configurations('processed_data.cfg', format = 'cfg')
-barriers = grid.percolation_barriers()
-```
+### Determine percolation barriers
+barriers = g.percolation_barriers(n_jobs=-1)
 
-#### Step #4: Write .grd or .cube file for visualization in VESTA 3.0
-
-```python
+### Save .grd file for visualization in VESTA 3.0
 g.write_grd('test.grd')
 ```
 
 ## Notebooks
 
 
-- [Using TensorNet model pre-trained on MatPES](notebooks/TensorNet_MatPES.ipynb)    
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/14gabZ-u19K-_I_e7-g67N8-xtPIN36Nw#sandboxMode=true&scrollTo=5TySp6C6UBoZ)
+- [Using SevenNet for calculating percolation barriers](notebooks/integrations.ipynb)    
+
+- [Using moment tensor potentials (as implemented in MLIP 2.0) for calculating percolation barriers](notebooks/mtp.ipynb)
 
 
 ### How to cite

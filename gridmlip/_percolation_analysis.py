@@ -231,7 +231,7 @@ class Percolyze:
         ----------
         
         energies: dict
-            infromation about percolation {'E_1D': float, 'E_2D': float, 'E_3D': float}
+            infromation about percolation {'e1d': float, 'e2d': float, 'e3d': float}
 
         """
 
@@ -242,6 +242,6 @@ class Percolyze:
         for i, dim in enumerate([2, 4, 8]):
             
             energy = self._percolation_energy(encut = encut, dim = dim)
-            energies.update({f'E_{i+1}D': energy})
+            energies.update({f'e{i+1}d': energy})
         return energies
     
