@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+import dataclasses
 import numpy as np
 from tqdm import tqdm
 
@@ -14,7 +14,8 @@ from ._mesh import Mesh
 __author__ = "Artem Dembitskiy"
 
 
-@dataclass
+
+@dataclasses.dataclass
 class Grid:
     """
     Grid object representing a mesh for atomic structures.
@@ -31,7 +32,8 @@ class Grid:
         Spacing between points (in Angstroms).
         
     r_cut : float, default 5.0
-        Cutoff radius to find the first nearest neighbor for each grid point.
+        Cutoff radius to find the first nearest neighbor for each grid point
+        and construct supercells for further calculations
         
     r_min : float, default 1.5
         Blocking sphere radius.
@@ -54,18 +56,19 @@ class Grid:
     specie: int
     resolution: float = 0.25
     r_cut: float = 5.0
-    r_min: float = 1.5
+    r_min: float = 1.0
     symprec: float = 0.1
     atomic_types_mapper: dict = None
     empty_framework: bool = True
     verbose: bool = True
 
-    cell: object = field(init=False)
-    base: object = field(init=False)
-    _mesh: object = field(default=None, init=False)
-
+    cell: object = dataclasses.field(init=False)
+    base: object = dataclasses.field(init=False)
+    _mesh: object = dataclasses.field(default=None, init=False)
     
     def __post_init__(self):
+
+        assert self.r_cut > self.r_min, f"r_cut ({self.r_cut}) must be greater than r_min ({self.r_min})"
         
         if self.atomic_types_mapper:
             numbers = self._map_atomic_types(self.atomic_types_mapper, self.atoms.numbers)
@@ -91,7 +94,6 @@ class Grid:
         self.ir_grid_points, self.mapping = self._mesh.get_irreducible_mapping()
         self.mesh_frac = self._mesh.addresses / (np.array(self._mesh.mesh_shape) - 1)
         self.mesh_cart = np.dot(self.mesh_frac, self.base.cell)
-        
         self.min_dists, _ = nn_list(self.base.positions,
                                     self.mesh_cart[self.ir_grid_points],
                                     self.r_cut,
@@ -114,22 +116,40 @@ class Grid:
 
         
 
-    def _map_atomic_types(self, atomic_types_mapper, numbers):
+    def _map_atomic_types(self,
+        atomic_types_mapper: dict,
+        numbers: list | np.ndarray,
+    ):
         u,inv = np.unique(numbers,return_inverse = True)
         return np.array([atomic_types_mapper[x] for x in u])[inv].reshape(numbers.shape)
 
+    @staticmethod
+    def _repeat_atoms(atoms, r_cut):
+        cell = atoms.cell
+        h1 = cell.volume/np.linalg.norm(np.cross(cell[2, :], cell[1, :]))
+        h2 = cell.volume/np.linalg.norm(np.cross(cell[0, :], cell[2, :]))
+        h3 = cell.volume/np.linalg.norm(np.cross(cell[0, :], cell[1, :]))
+        scale = np.array(np.ceil(r_cut/np.array([h1, h2, h3])), dtype=int)
+        if np.any(scale > 1):
+            atoms = atoms.copy()
+            return atoms.repeat(scale)
+        else:
+            atoms = atoms.copy()
+            return atoms.repeat(scale)
     
     @classmethod
-    def from_file(cls, file,
-                  specie,
-                  resolution = 0.25,
-                  r_cut = 5.0,
-                  r_min = 1.5, 
-                  symprec = 0.1,
-                  atomic_types_mapper = None, 
-                  empty_framework = True,
-                  verbose=False
-                 ):
+    def from_file(
+        cls, 
+        file: str,
+        specie: int,
+        resolution: float = 0.25,
+        r_cut: float = 5.0,
+        r_min: float = 1.0, 
+        symprec: float = 0.1,
+        atomic_types_mapper: dict | None = None, 
+        empty_framework: bool = True,
+        verbose: bool = False
+    ):
         """ 
         Create Grid object from the file.
 
@@ -172,15 +192,25 @@ class Grid:
             atoms = read_cfg(file)[0]
         else:
             atoms = read(file)
-        return cls(atoms, specie, resolution=resolution,
-                   symprec=symprec, r_cut=r_cut, r_min=r_min,
-                   atomic_types_mapper=atomic_types_mapper,
-                   empty_framework=empty_framework, verbose=verbose
-                  )
+        return cls(
+            atoms, 
+            specie,
+            resolution=resolution,
+            symprec=symprec,
+            r_cut=r_cut,
+            r_min=r_min,
+            atomic_types_mapper=atomic_types_mapper,
+            empty_framework=empty_framework,
+            verbose=verbose,
+        )
 
 
-    
-    def construct_configurations(self, config_format = 'ase', filename = None):
+
+    def construct_configurations(
+        self,
+        config_format: str = 'ase',
+        filename: str | None = None,
+    ):
         """ 
         Construct atomic configurations for further calculations.
 
@@ -203,13 +233,15 @@ class Grid:
             self.generate_mesh()
         
         configurations = []
+        base = self._repeat_atoms(self.base, self.r_cut)
+        
         if config_format == 'ase':
 
             ir_mesh_cart = self.mesh_cart[self.ir_grid_points]
             assert len(ir_mesh_cart) == len(self.min_dists)
             for p, d in tqdm(zip(ir_mesh_cart, self.min_dists), desc = 'creating configurations'):
                 if d > self.r_min:
-                    framework = self.base.copy()
+                    framework = base.copy()
                     framework.append(self.specie)
                     framework.positions[-1] = p
                     configurations.append(framework)
@@ -217,7 +249,7 @@ class Grid:
         elif config_format == 'pymatgen':
 
             from pymatgen.io.ase import AseAtomsAdaptor
-            base = AseAtomsAdaptor.get_structure(self.base)
+            base = AseAtomsAdaptor.get_structure(base)
             ir_mesh_frac = self.mesh_frac[self.ir_grid_points]
             for p, d in tqdm(zip(ir_mesh_frac, self.min_dists), desc = 'creating configurations'):
                 if d > self.r_min:
@@ -239,7 +271,7 @@ class Grid:
 
 
 
-    def load_energies(self, energies):
+    def load_energies(self, energies: list | np.ndarray):
 
         """ 
         Load energies obtained by any MLIP or structure-to-property model.
@@ -264,7 +296,7 @@ class Grid:
         self.data = self.distribution.reshape(self.mesh_shape)
 
 
-    def read_processed_configurations(self, filename, file_format = 'xyz'):
+    def read_processed_configurations(self, filename: str, file_format: str = 'xyz'):
 
         """ 
         Read processed (by any MLIP) atomic configurations
@@ -292,7 +324,7 @@ class Grid:
 
 
 
-    def write_cube(self, filename):
+    def write_cube(self, filename: str):
 
         """
         Write .cube file containing structural and MLIP distribution data.
@@ -311,7 +343,7 @@ class Grid:
     
 
 
-    def write_grd(self, filename):
+    def write_grd(self, filename: str):
         
         """
         Write MLIP distribution volumetric file for VESTA 3.0.
@@ -340,14 +372,19 @@ class Grid:
 
 
 
-    def percolation_barriers(self, encut=10.0, n_jobs=1, backend='threading'):
+    def percolation_barriers(
+        self,
+        upper_limit: float = 10.0,
+        n_jobs: int = 1,
+        backend: str = 'threading'
+    ):
         """
         Find percolation energy and dimensionality of a migration network.
 
         Parameters
         ----------
 
-        encut: float, 5.0 by default
+        upper_limit: float, 10.0 by default
             cutoff energy above which barriers supposed to be np.inf
 
         n_jobs: int, 1 by default
@@ -363,7 +400,7 @@ class Grid:
             infromation about percolation {'e1d': float, 'e2d': float, 'e3d': float}
         """
         pl = Percolyze(self.data)
-        return pl.percolation_barriers(encut = encut, n_jobs=n_jobs, backend=backend)
+        return pl.percolation_barriers(upper_limit=upper_limit, n_jobs=n_jobs, backend=backend)
 
 
         

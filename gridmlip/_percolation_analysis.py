@@ -167,7 +167,7 @@ class Percolyze:
 
 
     
-    def _percolation_energy(self, dim, encut = 10.0):
+    def _percolation_energy(self, dim, upper_limit=10.0):
 
         """
         Get percolation energy fofr a given dimensionality of percolation
@@ -178,7 +178,7 @@ class Percolyze:
         dim: int
             dimensionality of percolation. 2 -> 1D, 4 -> 2D, 8 - 3D percolation
             
-        encut: float, 10.0 by default
+        upper_limit: float, 10.0 by default
             stop criterion for the search of percolation energy
         
         Returns
@@ -190,7 +190,7 @@ class Percolyze:
         data = self.data.reshape(self.size)
         data = data - data.min()
         emin = data.min()
-        emax = emin + encut
+        emax = emin + upper_limit
         count = 0
         barrier = np.inf
         while (emax - emin) > 0.01:
@@ -210,7 +210,7 @@ class Percolyze:
 
 
 
-    def percolation_barriers(self, encut = 10.0, n_jobs = 1, backend = 'threading'):
+    def percolation_barriers(self, upper_limit=10.0, n_jobs=1, backend='threading'):
 
         """
         Find percolation energy and dimensionality of a migration network.
@@ -218,7 +218,7 @@ class Percolyze:
         Parameters
         ----------
 
-        encut: float, 5.0 by default
+        upper_limit: float, 5.0 by default
             cutoff energy above which barriers supposed to be np.inf
 
         n_jobs: int, 1 by default
@@ -241,7 +241,7 @@ class Percolyze:
         energies = {}
         for i, dim in enumerate([2, 4, 8]):
             
-            energy = self._percolation_energy(encut = encut, dim = dim)
+            energy = self._percolation_energy(upper_limit = upper_limit, dim = dim)
             energies.update({f'e{i+1}d': energy})
         return energies
     

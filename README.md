@@ -43,6 +43,7 @@ g = Grid.from_file(
     file,
     specie,
     r_min=0.8,
+    r_cut=5.0,
     resolution=0.2,
     symprec=0.1,
     empty_framework=True,
@@ -55,7 +56,7 @@ atoms_list = g.construct_configurations(config_format='ase')
 ### Predict energies
 energy_list, forces_list = evaluate_atoms_list(
     atoms_list,
-    model_path='.data/checkpoint_sevennet_0.pth',
+    model_path='./data/checkpoint_sevennet_0.pth',
     device='cuda',
     compute_force=False,
     batch_size=256

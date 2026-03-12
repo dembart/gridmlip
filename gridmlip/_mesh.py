@@ -123,7 +123,6 @@ class Mesh:
         npoints = len(self.mesh)
         nsym = len(self.rotations)
         
-        lin_indices = self._index_to_linear(self.mesh)
         index_map = np.arange(npoints, dtype=int)
     
         all_images = self._apply_sym_ops()
