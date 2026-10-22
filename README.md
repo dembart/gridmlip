@@ -15,6 +15,8 @@
 
 **gridmlip** is a library for the symmetry-aware grid-based sampling of the energy landscape of mobile species in solids using machine learning interatomic potentials (MLIPs).
 
+> (!) Note: The API and functionality may change. Errors are expected. The library is under development.
+
 ## Installation
 
 ```
@@ -30,6 +32,8 @@ pip install .
 
 ## How to use
 Here we describe the pipeline in general. For a specific example, see [Notebooks](#notebooks).
+
+### Percolation analysis
 
 ```python 
 from gridmlip import Grid
@@ -70,6 +74,29 @@ barriers = g.percolation_barriers(n_jobs=-1)
 
 ### Save .grd file for visualization in VESTA 3.0
 g.write_grd('test.grd')
+```
+### Generate defected configurations for MLIP pre-training
+
+```python
+from ase.io import read
+from gridmlip._generate import DefectGenerator
+
+GENERATOR_PARAMS = {
+    'specie': 3,
+    'resolution': 0.25,
+    'r_min': 1.3,
+    'r_cut': 7.5,
+    'symprec': 0.1,
+    'max_sep_dist': 'auto',
+    'upper_bound': 6.0,
+}
+
+gen = DefectGenerator(atoms, **GENERATOR_PARAMS)
+
+### Symmetrically distinct defect configurations
+cfgs_int = gen.generate_dataset(defect_type='int') 
+cfgs_vac= gen.generate_dataset(defect_type='vac')
+cfgs_frk = gen.generate_dataset(defect_type='frenkel')
 ```
 
 ## Notebooks

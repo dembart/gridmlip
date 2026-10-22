@@ -13,6 +13,7 @@ def evaluate_atoms_list(
     batch_size=64,
     device="cuda",
     compute_force=False,
+    verbose=True,
 ):
     """
     Predict energies for a list of atoms
@@ -67,7 +68,7 @@ def evaluate_atoms_list(
             cutoff=float(model.r_max),
             heads=heads,
         )
-        for cfg in tqdm(configs, desc='converting structures to graphs')
+        for cfg in tqdm(configs, desc='converting structures to graphs', disable=verbose)
     ]
 
     loader = torch_geometric.dataloader.DataLoader(
@@ -80,7 +81,7 @@ def evaluate_atoms_list(
     energies_list = []
     forces_list = [] if compute_force else None
 
-    for batch in tqdm(loader, desc = 'getting predictions'):
+    for batch in tqdm(loader, desc = 'getting predictions', disable=verbose):
         batch = batch.to(device)
         output = model(batch.to_dict(), compute_force=compute_force)
         energies_list.append(torch_tools.to_numpy(output["energy"]))

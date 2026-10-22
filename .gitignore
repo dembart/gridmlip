@@ -1,8 +1,14 @@
 *.ipynb
 !notebooks/*.ipynb
 *grd
+*.zip
 
+scripts/*
+tests/*
+
+misc
 data
+BVEL13k
 
 gridmlip/__pycache__/*
 *.png

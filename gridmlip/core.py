@@ -122,20 +122,16 @@ class Grid:
     ):
         u,inv = np.unique(numbers,return_inverse = True)
         return np.array([atomic_types_mapper[x] for x in u])[inv].reshape(numbers.shape)
-
+    
     @staticmethod
     def _repeat_atoms(atoms, r_cut):
+        atoms = atoms.copy()
         cell = atoms.cell
         h1 = cell.volume/np.linalg.norm(np.cross(cell[2, :], cell[1, :]))
         h2 = cell.volume/np.linalg.norm(np.cross(cell[0, :], cell[2, :]))
         h3 = cell.volume/np.linalg.norm(np.cross(cell[0, :], cell[1, :]))
         scale = np.array(np.ceil(r_cut/np.array([h1, h2, h3])), dtype=int)
-        if np.any(scale > 1):
-            atoms = atoms.copy()
-            return atoms.repeat(scale)
-        else:
-            atoms = atoms.copy()
-            return atoms.repeat(scale)
+        return atoms.repeat(scale)
     
     @classmethod
     def from_file(
@@ -206,7 +202,7 @@ class Grid:
 
 
 
-    def construct_configurations(
+    def construct_cfgs(
         self,
         config_format: str = 'ase',
         filename: str | None = None,
@@ -234,28 +230,26 @@ class Grid:
         
         configurations = []
         base = self._repeat_atoms(self.base, self.r_cut)
+
+        ir_mesh_cart = self.mesh_cart[self.ir_grid_points]
+        assert len(ir_mesh_cart) == len(self.min_dists)
         
         if config_format == 'ase':
-
-            ir_mesh_cart = self.mesh_cart[self.ir_grid_points]
-            assert len(ir_mesh_cart) == len(self.min_dists)
-            for p, d in tqdm(zip(ir_mesh_cart, self.min_dists), desc = 'creating configurations'):
-                if d > self.r_min:
-                    framework = base.copy()
-                    framework.append(self.specie)
-                    framework.positions[-1] = p
-                    configurations.append(framework)
+            
+            for p in tqdm(ir_mesh_cart[self.min_dists > self.r_min], desc='creating configurations'):
+                framework = base.copy()
+                framework.append(self.specie)
+                framework.positions[-1] = p
+                configurations.append(framework)
                     
         elif config_format == 'pymatgen':
 
             from pymatgen.io.ase import AseAtomsAdaptor
             base = AseAtomsAdaptor.get_structure(base)
-            ir_mesh_frac = self.mesh_frac[self.ir_grid_points]
-            for p, d in tqdm(zip(ir_mesh_frac, self.min_dists), desc = 'creating configurations'):
-                if d > self.r_min:
-                    framework = base.copy()
-                    framework.append(self.specie, coords = p)
-                    configurations.append(framework)
+            for p in tqdm(ir_mesh_cart[self.min_dists > self.r_min], desc='creating configurations'):
+                framework = base.copy()
+                framework.append(self.specie, coords=p)
+                configurations.append(framework)
         else:
             
             raise ValueError(f"Wrong config_format {config_format}")
@@ -296,7 +290,7 @@ class Grid:
         self.data = self.distribution.reshape(self.mesh_shape)
 
 
-    def read_processed_configurations(self, filename: str, file_format: str = 'xyz'):
+    def read_processed_cfgs(self, filename: str, file_format: str = 'xyz'):
 
         """ 
         Read processed (by any MLIP) atomic configurations
