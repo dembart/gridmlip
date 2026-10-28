@@ -99,6 +99,33 @@ cfgs_vac= gen.generate_dataset(defect_type='vac')
 cfgs_frk = gen.generate_dataset(defect_type='frenkel')
 ```
 
+### Find voids
+
+```python
+from ase.io import read
+from gridmlip._void_search import clustered_local_minima
+
+atoms = read('file.cif')
+
+g = Grid(atoms, specie=3, empty_framework=False)
+g.generate_mesh()
+
+clusters = clustered_local_minima(
+    -g.min_distances_data, # can be any data computed for the generated grid
+    min_distance=2.0,
+    relative_max_value=0.5,
+    cell=g.atoms.cell,
+    coord_type='cart'
+)
+
+for (pos, energy, n) in clusters:
+    print('Site', pos)
+    print('Site energy', energy) # in the case of distance 
+    print('Number of points in a cluster', n)
+
+```
+
+
 ## Notebooks
 
 

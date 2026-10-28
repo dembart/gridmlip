@@ -132,7 +132,12 @@ class Grid:
         h3 = cell.volume/np.linalg.norm(np.cross(cell[0, :], cell[1, :]))
         scale = np.array(np.ceil(r_cut/np.array([h1, h2, h3])), dtype=int)
         return atoms.repeat(scale)
-    
+
+    @property
+    def min_distances_data(self):
+        return self.min_dists[self.mapping].reshape(self.mesh_shape)
+
+
     @classmethod
     def from_file(
         cls, 
