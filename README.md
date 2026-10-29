@@ -120,10 +120,36 @@ clusters = clustered_local_minima(
 
 for (pos, energy, n) in clusters:
     print('Site', pos)
-    print('Site energy', energy) # in the case of distance 
+    print('Site energy', energy) # here, energy is the minimal distances
     print('Number of points in a cluster', n)
 
 ```
+
+### Bond valence site energy calculations
+
+```python
+from ase.io import read
+from ions.decorate import assign_oxidation_states
+from gridmlip.integrations.bvse import bvse_distribution
+
+atoms = read('LiFePO4.cif')
+atoms = assign_oxidation_states(atoms)
+
+PARAMS = {
+    "mobile_ion": "Li+",
+    "resolution": 0.2,
+    "r_min": 0.8,
+    "r_cut": 10.0,
+    "empty_framework": True,
+    "k": 100,
+    "f": 0.74,
+}
+
+grid, energies = bvse_distribution(atoms, **PARAMS)
+grid.percolation_barriers() # energies already loaded via grid.load_energies(energies)
+
+```
+
 
 
 ## Notebooks
