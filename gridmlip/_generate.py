@@ -6,7 +6,6 @@ from ions import Percolator, Edge
 
 from .core import Grid
 from ._neighborhood import nn_list
-from ._distortion import rattle_positions, distort_lattice
 
 
 
@@ -23,7 +22,6 @@ class DefectGenerator:
         max_sep_dist: float | str = 'auto',
         upper_bound: float = 6.0,
         verbose: bool = False,
-        seed: int | np.random.Generator | None = None,
     ):
         if specie is None:
             raise ValueError("specie is required (atomic number of the mobile species)")
@@ -38,7 +36,6 @@ class DefectGenerator:
         self.verbose = verbose
         self.upper_bound = upper_bound
         self._specie_symbol = atoms[atoms.numbers == specie].symbols[0]
-        self.rng = np.random.default_rng(seed)
         self._percolator = None # placeholder
         self._mincut_maxdim = None # placeholder
 
@@ -194,21 +191,15 @@ class DefectGenerator:
         return summary
 
 
-    def _append_configurations(self, base, mesh_pos, pos_std=None, strain_std=None, verbose=False):
+    def _append_configurations(self, base, mesh_pos, verbose=False):
         """Construct configurations"""
         configs = []
     
         for p in tqdm(mesh_pos, desc="creating configurations", disable=not verbose):
             framework = base.copy()
-
-            if pos_std is not None:
-                framework = rattle_positions(framework, std=pos_std, rng=self.rng)  # rng added
     
             framework.append(self.specie)
             framework.positions[-1] = p
-    
-            if strain_std is not None:
-                framework = distort_lattice(framework, std=strain_std, rng=self.rng)  # rng added
     
             configs.append(framework)
     
@@ -218,8 +209,6 @@ class DefectGenerator:
     def generate_dataset(
         self,
         defect_type: str,
-        pos_std: float | None = None,
-        strain_std: float | None = None,
         verbose: bool = False,
         dry_run: bool = False,
     ):
@@ -243,8 +232,6 @@ class DefectGenerator:
                 self._append_configurations(
                     base,
                     mesh_pos,
-                    pos_std=pos_std,
-                    strain_std=strain_std,
                     verbose=verbose,
                 )
             )
