@@ -55,7 +55,7 @@ g = Grid.from_file(
 )
 
 ### Prepare inequivalent atomic configurations
-atoms_list = g.construct_configurations(config_format='ase')
+atoms_list = g.construct_cfgs(config_format='ase')
 
 ### Predict energies
 energy_list, forces_list = evaluate_atoms_list(
