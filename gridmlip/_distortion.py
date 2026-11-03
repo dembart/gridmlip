@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 from ase import Atoms
+from vesin import ase_neighbor_list
 
 
 def _get_rng(rng=None):
@@ -78,6 +79,7 @@ def rattle_positions(atoms, std=0.05, rng=None):
     return rattled
 
 
+
 def rattle_atoms(
     atoms: Atoms,
     pos_std: float = 0.05,
@@ -87,13 +89,35 @@ def rattle_atoms(
     max_abs_shear_strain: float = 0.05,
     rng: np.random.Generator | None = None,
     max_attempts: int = 100,
+    d_min: float = 1.4,
 ) -> Atoms:
     
-    rattled_pos = rattle_positions(atoms, std=pos_std, rng=rng)
+    rattled = atoms.copy()
+    valid_positions_found = False
+
+    for _ in range(max_attempts):
+        rattled_candidate = rattle_positions(atoms, std=pos_std, rng=rng)
+        
+        i, j, d = ase_neighbor_list("ijd", rattled_candidate, cutoff=d_min)
+        
+        if len(d) > 0 and np.min(d) < d_min:
+            continue
+            
+        rattled = rattled_candidate
+        valid_positions_found = True
+        break
     
+    if not valid_positions_found:
+        warnings.warn(
+            f"Could not satisfy minimum distance cutoff {d_min} Å within {max_attempts} attempts. "
+            "Proceeding to cell distortion using the un-rattled structure.",
+            UserWarning,
+            stacklevel=2
+        )
+
     try:
-        final_structure = distort_cell_bounded(
-            rattled_pos,
+        rattled = distort_cell_bounded(
+            rattled,
             strain_std=strain_std,
             max_volume_change=max_volume_change,
             max_principal_strain=max_principal_strain,
@@ -101,12 +125,11 @@ def rattle_atoms(
             rng=rng,
             max_attempts=max_attempts,
         )
-        return final_structure
     except RuntimeError as e:
-        # Catch the exception, trigger a warning, and fall back to the position-rattled structure
         warnings.warn(
             f"Cell distortion failed: {e}. Returning position-rattled structure only.",
             UserWarning,
             stacklevel=2
         )
-        return rattled_pos
+
+    return rattled
