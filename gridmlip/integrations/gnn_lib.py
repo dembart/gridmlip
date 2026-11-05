@@ -99,9 +99,9 @@ def evaluate_atoms_list_cgcnn(
         
         
     energies = np.concatenate(energies_list, axis=0).squeeze()
-    forces = np.concatenate(forces_list, axis=0) if compute_force else None
+    #forces = np.concatenate(forces_list, axis=0) if compute_force else None
     node_feats = np.concatenate(node_feats_list, axis=0) if return_node_features else None
     if return_node_features:
-        return energies, forces, node_feats
+        return energies, forces_list, node_feats
     else:
-        return energies, forces
+        return energies, forces_list
