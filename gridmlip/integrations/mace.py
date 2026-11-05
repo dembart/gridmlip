@@ -89,5 +89,9 @@ def evaluate_atoms_list(
             forces_list.append(torch_tools.to_numpy(output["forces"]))
         
     energies = np.concatenate(energies_list, axis=0)
-    #forces = np.concatenate(forces_list, axis=0) if compute_force else None
-    return energies, forces_list
+    forces = np.concatenate(forces_list, axis=0) if compute_force else None
+    
+    n_nodes = list(map(len, atoms_list))
+    forces = np.split(forces, np.cumsum(n_nodes)[:-1]) if compute_force else None
+
+    return energies, forces

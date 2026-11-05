@@ -83,5 +83,9 @@ def evaluate_atoms_list(
             if compute_force:
                 forces_list.append(outg[KEY.PRED_FORCE])
     energies = np.array(energies_list)
-    #forces = np.concatenate(forces_list, axis=0) if compute_force else None
-    return energies, forces_list
+    forces = np.concatenate(forces_list, axis=0) if compute_force else None
+
+    n_nodes = list(map(len, atoms_list))
+    forces = np.split(forces, np.cumsum(n_nodes)[:-1]) if compute_force else None
+    
+    return energies, forces
