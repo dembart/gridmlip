@@ -124,8 +124,12 @@ class Grid:
         return np.array([atomic_types_mapper[x] for x in u])[inv].reshape(numbers.shape)
     
     @staticmethod
-    def _repeat_atoms(atoms, r_cut):
+    def _repeat_atoms(atoms, r_cut, supercell_size=None):
         atoms = atoms.copy()
+
+        if supercell_size is not None:
+            return atoms.repeat(supercell_size)
+
         cell = atoms.cell
         h1 = cell.volume/np.linalg.norm(np.cross(cell[2, :], cell[1, :]))
         h2 = cell.volume/np.linalg.norm(np.cross(cell[0, :], cell[2, :]))
@@ -211,6 +215,7 @@ class Grid:
         self,
         config_format: str = 'ase',
         filename: str | None = None,
+        supercell_size : tuple | None = None,
     ):
         """ 
         Construct atomic configurations for further calculations.
@@ -224,6 +229,8 @@ class Grid:
         config_format: string, "ase" by default, can be "pymatgen" or "ase"
             data format of the created configurations (pymatgen's Structure of ASE's Atoms)
 
+        supercell_size : tuple | None
+            If provided, will be used instead of r_cut to create supercell
         
         Returns
         -------
@@ -234,7 +241,7 @@ class Grid:
             self.generate_mesh()
         
         configurations = []
-        base = self._repeat_atoms(self.base, self.r_cut)
+        base = self._repeat_atoms(self.base, self.r_cut, supercell_size=supercell_size)
 
         ir_mesh_cart = self.mesh_cart[self.ir_grid_points]
         assert len(ir_mesh_cart) == len(self.min_dists)

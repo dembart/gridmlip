@@ -107,24 +107,24 @@ class DefectGenerator:
         return filtered_pos, defect_base
 
 
-    def _prepare_interstitials(self):
+    def _prepare_interstitials(self, supercell_size=None):
 
         atoms = self.atoms.copy()
         grid = self._make_grid(atoms)
-        base = grid._repeat_atoms(atoms, grid.r_cut)
+        base = grid._repeat_atoms(atoms, grid.r_cut, supercell_size=supercell_size)
         ir_mesh_cart = grid.mesh_cart[grid.ir_grid_points]
         filtered_pos = ir_mesh_cart[grid.min_dists >= grid.r_min]
         return [(filtered_pos, base)]
 
 
 
-    def _prepare_vacancies(self):
+    def _prepare_vacancies(self, supercell_size=None):
 
         atoms = self.atoms.copy()
         pl, mincut, maxdim = self._get_percolator()
         edges = pl.unique_edges(cutoff=mincut, bottleneck_radius=0.0)
 
-        base = Grid._repeat_atoms(atoms, self.r_cut)
+        base = Grid._repeat_atoms(atoms, self.r_cut, supercell_size=supercell_size)
 
         sites_and_base = []
         for edge_data in edges:
@@ -146,7 +146,7 @@ class DefectGenerator:
 
 
 
-    def _prepare_frenkels(self):
+    def _prepare_frenkels(self, supercell_size=None):
 
         atoms = self.atoms.copy()
 
@@ -171,7 +171,7 @@ class DefectGenerator:
         else:
             global_max_sep = self.max_sep_dist
 
-        base = Grid._repeat_atoms(atoms, self.r_cut)
+        base = Grid._repeat_atoms(atoms, self.r_cut, supercell_size=supercell_size)
 
         sites_and_base = []
         for vac_id in vac_ids:
@@ -209,15 +209,35 @@ class DefectGenerator:
     def generate_dataset(
         self,
         defect_type: str,
+        supercell_size: tuple | None = None,
         verbose: bool = False,
         dry_run: bool = False,
     ):
+        """
+        Generate defected structures
+
+        Parameters
+        ----------
+        defect_type : str
+            allowed types are "int", "vac", "frenkel"
+
+        supercell_size : tuple | None, None by default
+            repeat structure along each diagonal
+            if None, self.r_cut will be used to estimate the size of the supercell
+        
+        verbose : bool, False by default
+            verbosity
+
+        dry_run : bool, False by default
+            return only statistics for the dataset to be generated
+        """
+
         if defect_type == 'int':
-            sites_and_base = self._prepare_interstitials()
+            sites_and_base = self._prepare_interstitials(supercell_size=supercell_size)
         elif defect_type == 'vac':
-            sites_and_base = self._prepare_vacancies()
+            sites_and_base = self._prepare_vacancies(supercell_size=supercell_size)
         elif defect_type == 'frenkel':
-            sites_and_base = self._prepare_frenkels()
+            sites_and_base = self._prepare_frenkels(supercell_size=supercell_size)
         else:
             raise ValueError(
                 f"defect_type must be 'int', 'vac', or 'frenkel', got {defect_type!r}"

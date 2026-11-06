@@ -3,7 +3,6 @@ import numpy as np
 from tqdm import tqdm
 
 from mace import data
-from mace.modules.utils import extract_invariant
 from mace.tools import torch_geometric, torch_tools, utils
 
 
@@ -11,8 +10,10 @@ def evaluate_atoms_list(
     atoms_list,
     model_path,
     batch_size=64,
+    dtype="float32",
     device="cuda",
     compute_force=False,
+    compute_stress=False,
     verbose=True,
 ):
     """
@@ -34,7 +35,13 @@ def evaluate_atoms_list(
         device
 
     compute_force: boolean, False by default
-        whether to predict forces
+        predict forces
+
+    compute_stress: boolean, False by default
+        predict stress
+
+    dtype: str,
+        "float32" or "float64"
     
     Returns
     ----------
@@ -42,11 +49,13 @@ def evaluate_atoms_list(
     energies and forces (None if compute_force=False)
     """
 
-
+    assert dtype in ("float32", "float64")
+    
     device = torch_tools.init_device(device)
 
     model = torch.load(model_path, map_location=device, weights_only=False)
-    model = model.float() # check this line
+    
+    model = model.float() if dtype=="float32" else model.double() # check this line
     model = model.to(device)
     
     for p in model.parameters():
@@ -80,18 +89,29 @@ def evaluate_atoms_list(
 
     energies_list = []
     forces_list = [] if compute_force else None
+    stress_list = [] if compute_stress else None
 
+    target_dtype = torch.float32 if dtype=='float32' else torch.float64
+    
     for batch in tqdm(loader, desc = 'getting predictions', disable=verbose):
         batch = batch.to(device)
-        output = model(batch.to_dict(), compute_force=compute_force)
+        for key in batch.keys:
+            value = getattr(batch, key)
+            if torch.is_tensor(value) and torch.is_floating_point(value):
+                setattr(batch, key, value.to(target_dtype))
+        output = model(batch.to_dict(), compute_force=compute_force, compute_stress=compute_stress)
         energies_list.append(torch_tools.to_numpy(output["energy"]))
         if compute_force:
             forces_list.append(torch_tools.to_numpy(output["forces"]))
+        if compute_stress:
+            stress_list.append(torch_tools.to_numpy(output["stress"]))
         
     energies = np.concatenate(energies_list, axis=0)
-    forces = np.concatenate(forces_list, axis=0) if compute_force else None
     
+    forces = np.concatenate(forces_list, axis=0) if compute_force else None
     n_nodes = list(map(len, atoms_list))
     forces = np.split(forces, np.cumsum(n_nodes)[:-1]) if compute_force else None
+    
+    stress = np.concatenate(stress_list, axis=0) if compute_stress else None
 
-    return energies, forces
+    return energies, forces, stress
