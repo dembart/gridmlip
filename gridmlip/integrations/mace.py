@@ -1,10 +1,5 @@
-import torch
 import numpy as np
 from tqdm import tqdm
-
-from mace import data
-from mace.tools import torch_geometric, torch_tools, utils
-
 
 def evaluate_atoms_list(
     atoms_list,
@@ -48,6 +43,16 @@ def evaluate_atoms_list(
     
     energies and forces (None if compute_force=False)
     """
+
+    try:
+        import torch
+        from mace import data
+        from mace.tools import torch_geometric, torch_tools, utils
+    except ImportError as exc:
+        raise ImportError(
+            "mace library is required."
+            "Install with `pip install 'gridmlip[mace]'`."
+        ) from exc
 
     assert dtype in ("float32", "float64")
     

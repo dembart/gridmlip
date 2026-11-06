@@ -95,10 +95,12 @@ def rattle_atoms(
     rattled = atoms.copy()
     valid_positions_found = False
 
+    rng = _get_rng(rng)
+
     for _ in range(max_attempts):
         rattled_candidate = rattle_positions(atoms, std=pos_std, rng=rng)
         
-        i, j, d = ase_neighbor_list("ijd", rattled_candidate, cutoff=d_min)
+        i, j, d = ase_neighbor_list("ijd", rattled_candidate, cutoff=1.5 * d_min)
         
         if len(d) > 0 and np.min(d) < d_min:
             continue

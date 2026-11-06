@@ -1,3 +1,52 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "gridmlip"
+dynamic = ["version"]
+description = "gridmlip"
+readme = "README.md"
+authors = [
+    { name = "Artem Dembitskiy", email = "art.dembitskiy@gmail.com" }
+]
+keywords = ["MLIP", "percolation barrier", "irreducible mesh"]
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+]
+dependencies = [
+    "numpy",
+    "spglib",
+    "ase",
+    "ions",
+    "tqdm",
+    "scipy",
+    "joblib",
+    "fpsample",
+]
+
+[project.optional-dependencies]
+scikit-learn = ["scikit-learn"]
+dscribe = ["dscribe"]
+mace = ["mace-torch"]
+sevenn = ["sevenn"]
+gnn = ["gnn_lib"]
+
+[project.urls]
+Homepage = "https://github.com/dembart/gridmlip"
+
+[tool.setuptools]
+zip-safe = true
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { attr = "gridmlip._version.__version__" }
+
+[tool.setuptools.packages.find]
+# This mimics 'packages = find:' from setup.cfg

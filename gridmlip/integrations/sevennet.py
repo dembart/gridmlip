@@ -1,15 +1,5 @@
-#import torch
 import numpy as np
 from tqdm import tqdm
-
-from torch_geometric.loader import DataLoader
-
-#from sevenn.atom_graph_data import AtomGraphData
-#from sevenn.train.graph_dataset import SevenNetGraphDataset
-from sevenn.train import dataload
-import sevenn.util as util
-import sevenn._keys as KEY
-
 
 def evaluate_atoms_list(
     atoms_list,
@@ -53,6 +43,17 @@ def evaluate_atoms_list(
     
     energies and forces (None if compute_force=False)
     """
+
+    try:
+        from torch_geometric.loader import DataLoader
+        from sevenn.train import dataload
+        import sevenn.util as util
+        import sevenn._keys as KEY
+    except ImportError as exc:
+        raise ImportError(
+            "sevenn library is required."
+            "Install with `pip install 'gridmlip[sevenn]'`."
+        ) from exc
 
     model, _ = util.model_from_checkpoint(model_path)
     model = model.to(device)

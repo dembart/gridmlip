@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from ase.io import read, write, cube
 
-from .utils import read_cfg, write_cfg
+from .io import read_cfg, write_cfg
 from ._neighborhood import nn_list
 from ._percolation_analysis import Percolyze
 from ._mesh import Mesh

@@ -2,6 +2,7 @@
 !notebooks/*.ipynb
 *grd
 *.zip
+*.yaml
 
 scripts/*
 tests/*

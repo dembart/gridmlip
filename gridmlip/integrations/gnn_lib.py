@@ -1,11 +1,5 @@
-from tqdm import tqdm
 import numpy as np
-import torch
-from torch.utils.data import DataLoader
-
-from gnn_lib.graph_data import InMemoryDataset, atoms2data
-from gnn_lib.data_utils import collate_fn
-
+from tqdm import tqdm
 
 def evaluate_atoms_list_cgcnn(
     atoms_list,
@@ -52,6 +46,17 @@ def evaluate_atoms_list_cgcnn(
     energies and forces (None if compute_force=False)
     """
 
+    try:
+        import torch
+        from torch.utils.data import DataLoader
+
+        from gnn_lib.graph_data import InMemoryDataset, atoms2data
+        from gnn_lib.data_utils import collate_fn
+    except ImportError as exc:
+        raise ImportError(
+            "gnn_lib library is required."
+            "Install with `pip install 'gridmlip[gnn_lib]'`."
+        ) from exc
     
     model = torch.load(model_path, map_location=device, weights_only=False)
     model = model.to(device)
