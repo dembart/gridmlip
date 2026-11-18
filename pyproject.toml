@@ -27,13 +27,21 @@ dependencies = [
     "ions",
     "tqdm",
     "scipy",
-    "joblib",
     "fpsample",
 ]
 
 [project.optional-dependencies]
+fast = [
+    # Intel Macs: use the last version with binary wheels
+    "numba>=0.62,<0.63; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+
+    # Apple Silicon, Linux, Windows
+    "numba>=0.62,<0.69; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+]
 scikit-learn = ["scikit-learn"]
 dscribe = ["dscribe"]
+dataset = ["scikit-learn", "dscribe", "vesin", "pyyaml"]
+test = ["pytest"]
 mace = ["mace-torch"]
 sevenn = ["sevenn"]
 gnn = ["gnn_lib"]
@@ -50,3 +58,6 @@ version = { attr = "gridmlip._version.__version__" }
 
 [tool.setuptools.packages.find]
 # This mimics 'packages = find:' from setup.cfg
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

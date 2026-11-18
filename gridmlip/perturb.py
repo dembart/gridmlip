@@ -1,7 +1,6 @@
 import warnings
 import numpy as np
 from ase import Atoms
-from vesin import ase_neighbor_list
 
 
 def _get_rng(rng=None):
@@ -92,6 +91,13 @@ def rattle_atoms(
     d_min: float = 1.4,
 ) -> Atoms:
     
+    try:
+        from vesin import ase_neighbor_list
+    except ImportError as exc:
+        raise ImportError(
+            "rattle_atoms requires vesin. Install with `pip install 'gridmlip[dataset]'`."
+        ) from exc
+
     rattled = atoms.copy()
     valid_positions_found = False
 

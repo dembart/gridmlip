@@ -92,7 +92,7 @@ class Grid:
                                symprec = self.symprec)
         self.mesh_shape = self._mesh.mesh_shape
         self.ir_grid_points, self.mapping = self._mesh.get_irreducible_mapping()
-        self.mesh_frac = self._mesh.addresses / (np.array(self._mesh.mesh_shape) - 1)
+        self.mesh_frac = self._mesh.frac_coords
         self.mesh_cart = np.dot(self.mesh_frac, self.base.cell)
         self.min_dists, _ = nn_list(self.base.positions,
                                     self.mesh_cart[self.ir_grid_points],
@@ -139,6 +139,8 @@ class Grid:
 
     @property
     def min_distances_data(self):
+        if self._mesh is None:
+            self.generate_mesh()
         return self.min_dists[self.mapping].reshape(self.mesh_shape)
 
 
@@ -293,12 +295,19 @@ class Grid:
         if self._mesh is None:
             self.generate_mesh()
 
+        accessible = self.min_dists > self.r_min
+        energies = np.asarray(energies, dtype=float).ravel()
+        if energies.size != accessible.sum():
+            raise ValueError(
+                f"Expected {accessible.sum()} energies (one per configuration), got {energies.size}"
+            )
         self.energies = energies
-        
-        ir_distribution = np.ones_like(self.min_dists) * np.inf
-        ir_distribution[self.min_dists > self.r_min] = self.energies
-        
-        self.distribution = np.nan_to_num(ir_distribution, copy = False, nan = np.inf)[self.mapping]
+
+        # blocked points (closer than r_min to the framework) and failed predictions are +inf
+        ir_distribution = np.full(self.min_dists.shape, np.inf)
+        ir_distribution[accessible] = np.where(np.isnan(energies), np.inf, energies)
+
+        self.distribution = ir_distribution[self.mapping]
         self.data = self.distribution.reshape(self.mesh_shape)
 
 
@@ -330,6 +339,15 @@ class Grid:
 
 
 
+    def _finite_data(self):
+        """Data for volumetric files: blocked (+inf) points are set to the largest finite value."""
+        data = np.asarray(self.data, dtype=float)
+        finite = np.isfinite(data)
+        if finite.all():
+            return data
+        fill = data[finite].max() if finite.any() else 0.0
+        return np.where(finite, data, fill)
+
     def write_cube(self, filename: str):
 
         """
@@ -342,10 +360,9 @@ class Grid:
             file name to write .cube
         """
 
-        data = self.data
-        nx, ny, nz = data.shape
+        data = self._finite_data()
         with open(f'{filename}.cube', 'w') as f:
-            cube.write_cube(f, self.atoms, data = data[:nx-1, :ny-1, :nz-1])
+            cube.write_cube(f, self.atoms, data = data)
     
 
 
@@ -362,8 +379,8 @@ class Grid:
         """
 
         
-        data = self.data
-        voxels = data.shape[0] - 1, data.shape[1] - 1, data.shape[2] - 1
+        data = self._finite_data()
+        voxels = data.shape
         cellpars = self.cell.cellpar()
         with open(f'{filename}.grd' , 'w') as report:
             comment = '# MLIP data made with gridmlip package: https://github.com/dembart/gridmlip'
@@ -376,13 +393,10 @@ class Grid:
                         val = data[i, j, k]
                         report.write(str(val) + '\n')
 
-
-
     def percolation_barriers(
         self,
         upper_limit: float = 10.0,
-        n_jobs: int = 1,
-        backend: str = 'threading'
+        backend: str = 'auto'
     ):
         """
         Find percolation energy and dimensionality of a migration network.
@@ -393,11 +407,9 @@ class Grid:
         upper_limit: float, 10.0 by default
             cutoff energy above which barriers supposed to be np.inf
 
-        n_jobs: int, 1 by default
-            number of jobs to run for percolation energy search
-
-        backend: str, 'threading' by default
-            see joblib's documentations for more details
+        backend: str, 'auto' by default
+            can be 'numba' or 'scipy'
+            'numba' is 10-100 times faster but requires numba package to be installed
 
         Returns
         ----------
@@ -405,11 +417,34 @@ class Grid:
         energies: dict
             infromation about percolation {'e1d': float, 'e2d': float, 'e3d': float}
         """
+        if getattr(self, "data", None) is None:
+            raise RuntimeError("No energies loaded. Call load_energies() or read_processed_cfgs() first.")
         pl = Percolyze(self.data)
-        return pl.percolation_barriers(upper_limit=upper_limit, n_jobs=n_jobs, backend=backend)
+        return pl.percolation_barriers(upper_limit=upper_limit, backend=backend)
 
+    def percolation_radii(
+        self,
+        backend: str = 'auto'
+    ):
+        """
+        Find percolation energy and dimensionality of a migration network.
 
+        Parameters
+        ----------
+
+        backend: str, 'auto' by default
+            can be 'numba' or 'scipy'
+            'numba' is 10-100 times faster but requires numba package to be installed
+
+        Returns
+        ----------
         
+        radii: dict
+            information about percolation {'r1d': float, 'r2d': float, 'r3d': float}
+        """
+        pl = Percolyze(self.min_distances_data)  # builds the mesh if needed
+        return pl.percolation_radii(backend=backend)
+
     def __repr__(self):
         return (
             f'Grid(atoms={self.atoms.symbols}, specie={self.specie}, '

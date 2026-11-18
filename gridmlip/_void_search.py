@@ -5,7 +5,7 @@ from ase.cell import Cell
  
  
 def _find_local_minima(distribution, size=3):
-    E = distribution[:-1, :-1, :-1]
+    E = distribution  # periodic mesh, no repeated boundary plane
     minf = ndimage.minimum_filter(E, size=size, mode='wrap')
     mask = E == minf
  
@@ -92,7 +92,7 @@ def clustered_local_minima(
     assert coord_type in ("cart", "frac", "mesh")
 
     idx, val = _find_local_minima(data)
-    core_shape = tuple(s - 1 for s in data.shape)
+    core_shape = tuple(data.shape)
     clusters = _cluster_minima(idx, val, core_shape,
                               min_distance=min_distance,
                               max_value=data.min() + relative_max_value,
@@ -105,7 +105,7 @@ def clustered_local_minima(
         cell_ase = Cell(cell)
         clusters_new = []
         for i, v, n in clusters:
-            scaled_site = i/(np.array(data.shape) - 1)
+            scaled_site = i/np.array(data.shape)
             if coord_type == "cart":
                 cart_site = cell_ase.cartesian_positions(scaled_site)
                 clusters_new.append([cart_site, v, n])

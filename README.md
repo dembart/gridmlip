@@ -79,7 +79,7 @@ g.write_grd('test.grd')
 
 ```python
 from ase.io import read
-from gridmlip._generate import DefectGenerator
+from gridmlip.defects import DefectGenerator
 
 GENERATOR_PARAMS = {
     'specie': 3,
@@ -95,7 +95,7 @@ gen = DefectGenerator(atoms, **GENERATOR_PARAMS)
 
 ### Symmetrically distinct defect configurations
 cfgs_int = gen.generate_dataset(defect_type='int') 
-cfgs_vac= gen.generate_dataset(defect_type='vac')
+cfgs_vac = gen.generate_dataset(defect_type='vac')
 cfgs_frk = gen.generate_dataset(defect_type='frenkel')
 ```
 
@@ -156,7 +156,6 @@ grid.percolation_barriers() # energies already loaded via grid.load_energies(ene
 
 
 - [Using SevenNet for calculating percolation barriers](notebooks/integrations.ipynb)    
-
 - [Using moment tensor potentials (as implemented in MLIP 2.0) for calculating percolation barriers](notebooks/mtp.ipynb)
 
 

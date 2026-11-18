@@ -17,7 +17,7 @@ def featurize_soap(
     except ImportError as exc:
         raise ImportError(
             "SOAP descriptors require DScribe. "
-            "Install with `pip install 'gridmlip[soap]'`."
+            "Install with `pip install 'gridmlip[dataset]'`."
         ) from exc
     
     if not cfgs:

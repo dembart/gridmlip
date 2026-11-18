@@ -1,4 +1,3 @@
-import yaml
 from pathlib import Path
 import numpy as np
 
@@ -6,6 +5,7 @@ import numpy as np
 
 def save_config(config, output_dir, filename="config.yaml"):
     """Save generation parameters to a YAML file."""
+    import yaml
 
     def to_serializable(obj):
         if isinstance(obj, Path):
@@ -39,6 +39,7 @@ def save_config(config, output_dir, filename="config.yaml"):
 
 def load_config(config_file):
     """Load generation parameters from a YAML file."""
+    import yaml
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 

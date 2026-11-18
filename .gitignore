@@ -5,7 +5,6 @@
 *.yaml
 
 scripts/*
-tests/*
 
 misc
 data

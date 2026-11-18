@@ -82,7 +82,7 @@ def evaluate_atoms_list(
             cutoff=float(model.r_max),
             heads=heads,
         )
-        for cfg in tqdm(configs, desc='converting structures to graphs', disable=verbose)
+        for cfg in tqdm(configs, desc='converting structures to graphs', disable=not verbose)
     ]
 
     loader = torch_geometric.dataloader.DataLoader(
@@ -98,7 +98,7 @@ def evaluate_atoms_list(
 
     target_dtype = torch.float32 if dtype=='float32' else torch.float64
     
-    for batch in tqdm(loader, desc = 'getting predictions', disable=verbose):
+    for batch in tqdm(loader, desc = 'getting predictions', disable=not verbose):
         batch = batch.to(device)
         for key in batch.keys:
             value = getattr(batch, key)

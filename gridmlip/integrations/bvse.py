@@ -15,8 +15,8 @@ def _decompose(mobile_ion):
 
     """ Decompose input string into chemical element and oxidation state"""
 
-    element = re.sub('\d', '', mobile_ion).replace("+","").replace("-","")
-    oxi_state = re.sub('\D', '', mobile_ion)
+    element = re.sub(r'\d', '', mobile_ion).replace("+","").replace("-","")
+    oxi_state = re.sub(r'\D', '', mobile_ion)
 
     if '-' in mobile_ion:
         sign = -1

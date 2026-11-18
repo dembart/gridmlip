@@ -5,7 +5,6 @@ from pathlib import Path
 import numpy as np
 
 from ase.io import write
-from sklearn.decomposition import PCA
 
 from .core import Grid
 from .defects import DefectGenerator
@@ -82,13 +81,21 @@ def generate_defects_dataset(
     max_attempts=100,
 ):
     
+    try:
+        from sklearn.decomposition import PCA
+    except ImportError as exc:
+        raise ImportError(
+            "generate_defects_dataset requires scikit-learn. "
+            "Install with `pip install 'gridmlip[dataset]'`."
+        ) from exc
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Save all function arguments except atoms_list
     config = {
         k: v for k, v in locals().items()
-        if k != "atoms_list"
+        if k not in ("atoms_list", "PCA")
     }
 
     save_config(config, output_dir)
