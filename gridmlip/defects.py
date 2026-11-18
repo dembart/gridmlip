@@ -9,7 +9,11 @@ from ._neighborhood import nn_list
 
 
 
-class DefectGenerator:
+_DEFECT_NAMES = {"int": "interstitial", "vac": "vacancy", "frenkel": "frenkel_pair"}
+
+
+class _DefectSampler:
+    """Shared machinery of interstitials(), vacancies() and frenkel_pairs()."""
 
     def __init__(
         self,
@@ -91,8 +95,7 @@ class DefectGenerator:
 
     def _prepare_site(self, atoms, base, remove_ids, center, max_sep):
         grid = self._make_grid(self._remove_atoms(atoms, remove_ids))
-        ir_mesh_cart = grid.mesh_cart[grid.ir_grid_points]
-        filtered_pos = ir_mesh_cart[grid.min_dists >= grid.r_min]
+        filtered_pos = grid.points
         filtered_pos = self._filter_by_distance(filtered_pos, center, max_sep, atoms.cell)
         
         # filtering due to the lower defect concentration in a supercell
@@ -112,8 +115,7 @@ class DefectGenerator:
         atoms = self.atoms.copy()
         grid = self._make_grid(atoms)
         base = grid._repeat_atoms(atoms, grid.r_cut, supercell_size=supercell_size)
-        ir_mesh_cart = grid.mesh_cart[grid.ir_grid_points]
-        filtered_pos = ir_mesh_cart[grid.min_dists >= grid.r_min]
+        filtered_pos = grid.points
         return [(filtered_pos, base)]
 
 
@@ -191,18 +193,18 @@ class DefectGenerator:
         return summary
 
 
-    def _append_configurations(self, base, mesh_pos, verbose=False):
+    def _append_configurations(self, base, mesh_pos, verbose=False, tags=None):
         """Construct configurations"""
         configs = []
-    
+
         for p in tqdm(mesh_pos, desc="creating configurations", disable=not verbose):
             framework = base.copy()
-    
             framework.append(self.specie)
             framework.positions[-1] = p
-    
+            if tags:
+                framework.info.update(tags)
             configs.append(framework)
-    
+
         return configs
 
 
@@ -247,12 +249,137 @@ class DefectGenerator:
             return self._statistics(sites_and_base)
 
         cfgs = []
-        for (mesh_pos, base) in sites_and_base:
+        for site, (mesh_pos, base) in enumerate(sites_and_base):
             cfgs.extend(
                 self._append_configurations(
                     base,
                     mesh_pos,
                     verbose=verbose,
+                    tags={"defect": _DEFECT_NAMES[defect_type], "defect_site": site},
                 )
             )
         return cfgs
+
+
+class DefectGenerator(_DefectSampler):
+    """Deprecated: use interstitials(), vacancies() and frenkel_pairs()."""
+
+    def __init__(self, *args, **kwargs):
+        import warnings
+        warnings.warn("DefectGenerator is deprecated and will be removed in gridmlip 0.4; use "
+                      "gridmlip.defects.interstitials / vacancies / frenkel_pairs instead.",
+                      DeprecationWarning, stacklevel=2)
+        super().__init__(*args, **kwargs)
+
+
+def interstitials(
+    atoms,
+    specie,
+    *,
+    resolution: float = 0.25,
+    r_cut: float = 6.0,
+    r_min: float = 1.0,
+    symprec: float | None = 0.1,
+    supercell_size: tuple | None = None,
+    dry_run: bool = False,
+    verbose: bool = False,
+):
+    """
+    Symmetrically distinct configurations with one extra mobile ion (interstitial).
+
+    Parameters
+    ----------
+    atoms: ase.Atoms
+        host structure (contains the mobile specie)
+    specie: int
+        atomic number of the mobile specie
+    resolution, r_min, symprec:
+        mesh spacing (A), blocking radius (A), symmetry precision, as in Grid
+    r_cut: float, 6.0 by default
+        the supercell is at least this thick in every direction (A)
+    supercell_size: tuple, optional
+        explicit repetitions; overrides r_cut
+    dry_run: bool, False by default
+        only return {'points': ..., 'bases': ...}
+
+    Returns
+    -------
+    list of ase.Atoms with info['defect'] = 'interstitial'
+    """
+    sampler = _DefectSampler(atoms, specie, resolution=resolution, r_cut=r_cut, r_min=r_min,
+                             symprec=symprec, verbose=verbose)
+    return sampler.generate_dataset("int", supercell_size=supercell_size, verbose=verbose, dry_run=dry_run)
+
+
+def vacancies(
+    atoms,
+    specie,
+    *,
+    resolution: float = 0.25,
+    r_cut: float = 6.0,
+    r_min: float = 1.0,
+    symprec: float | None = 0.1,
+    max_sep_dist: float | str = "auto",
+    upper_bound: float = 6.0,
+    supercell_size: tuple | None = None,
+    dry_run: bool = False,
+    verbose: bool = False,
+):
+    """
+    Configurations for vacancy-mediated hops: for each distinct hop (edge of the migration
+    network) both end sites are emptied and one mobile ion is placed on mesh points near the hop.
+
+    Parameters
+    ----------
+    max_sep_dist: float or 'auto'
+        keep points within this distance of the hop center; 'auto' = half the hop length + resolution
+    upper_bound: float, 6.0 by default
+        maximum hop length considered by the percolation analysis (A)
+
+    Other parameters as in interstitials().
+
+    Returns
+    -------
+    list of ase.Atoms with info['defect'] = 'vacancy' and info['defect_site'] = hop index
+    """
+    sampler = _DefectSampler(atoms, specie, resolution=resolution, r_cut=r_cut, r_min=r_min,
+                             symprec=symprec, max_sep_dist=max_sep_dist, upper_bound=upper_bound,
+                             verbose=verbose)
+    return sampler.generate_dataset("vac", supercell_size=supercell_size, verbose=verbose, dry_run=dry_run)
+
+
+def frenkel_pairs(
+    atoms,
+    specie,
+    *,
+    resolution: float = 0.25,
+    r_cut: float = 6.0,
+    r_min: float = 1.0,
+    symprec: float | None = 0.1,
+    max_sep_dist: float | str = "auto",
+    upper_bound: float = 6.0,
+    supercell_size: tuple | None = None,
+    dry_run: bool = False,
+    verbose: bool = False,
+):
+    """
+    Frenkel pairs: for each symmetrically distinct mobile-ion site, the ion is moved to mesh
+    points within max_sep_dist of its original site.
+
+    Parameters
+    ----------
+    max_sep_dist: float or 'auto'
+        maximum vacancy-interstitial separation (A); 'auto' = percolation cutoff of the network
+    upper_bound: float, 6.0 by default
+        maximum hop length for the percolation analysis (used only with max_sep_dist='auto')
+
+    Other parameters as in interstitials().
+
+    Returns
+    -------
+    list of ase.Atoms with info['defect'] = 'frenkel_pair' and info['defect_site'] = site index
+    """
+    sampler = _DefectSampler(atoms, specie, resolution=resolution, r_cut=r_cut, r_min=r_min,
+                             symprec=symprec, max_sep_dist=max_sep_dist, upper_bound=upper_bound,
+                             verbose=verbose)
+    return sampler.generate_dataset("frenkel", supercell_size=supercell_size, verbose=verbose, dry_run=dry_run)

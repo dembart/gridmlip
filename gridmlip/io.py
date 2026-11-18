@@ -145,3 +145,71 @@ def write_cfg(filename, atoms_list):
                 pass
             text.write(' Feature   EFS_by no_info\n')
             text.write('END_CFG\n\n')
+
+
+
+def read_energies(filename):
+    """
+    Read energies from processed configurations (.cfg of MLIP 2.0, or any file ASE can read).
+
+    Returns
+    -------
+    np.ndarray of potential energies, in file order
+    """
+    filename = str(filename)
+    if filename.endswith('.cfg'):
+        atoms_list = read_cfg(filename)
+    else:
+        from ase.io import read
+        atoms_list = read(filename, index=':')
+    return np.array([atoms.get_potential_energy() for atoms in atoms_list], dtype=float)
+
+
+def _finite(values):
+    """Volumetric viewers cannot show inf: replace non-finite values by the largest finite value."""
+    values = np.asarray(values, dtype=float)
+    finite = np.isfinite(values)
+    if finite.all():
+        return values
+    fill = values[finite].max() if finite.any() else 0.0
+    return np.where(finite, values, fill)
+
+
+def write_grd(filename, values, cell):
+    """
+    Write a periodic 3D array to VESTA's .grd format.
+
+    Parameters
+    ----------
+    filename: str
+        output path (written as given)
+    values: np.ndarray of shape (nx, ny, nz)
+        data on a periodic mesh (point i at fractional coordinate i/n)
+    cell: ase.cell.Cell or (3, 3) array
+    """
+    from ase.cell import Cell
+
+    data = _finite(values)
+    cellpars = Cell(np.asarray(cell)).cellpar()
+    with open(filename, 'w') as report:
+        report.write('# MLIP data made with gridmlip package: https://github.com/dembart/gridmlip\n')
+        report.write(' '.join(str(p) for p in cellpars) + '\n')
+        report.write(' '.join(str(v) for v in data.shape) + '\n')
+        np.savetxt(report, data.reshape(-1), fmt='%.10g')
+
+
+def write_cube(filename, values, atoms):
+    """
+    Write a periodic 3D array and the structure to Gaussian .cube format.
+
+    Parameters
+    ----------
+    filename: str
+        output path (written as given)
+    values: np.ndarray of shape (nx, ny, nz)
+    atoms: ase.Atoms
+    """
+    from ase.io import cube
+
+    with open(filename, 'w') as f:
+        cube.write_cube(f, atoms, data=_finite(values))

@@ -31,125 +31,94 @@ pip install .
 ```
 
 ## How to use
-Here we describe the pipeline in general. For a specific example, see [Notebooks](#notebooks).
 
-### Percolation analysis
+Two objects: a `Grid` says **where** to put the mobile ion; evaluating a model on it gives an `EnergyMap`.
 
-```python 
-from gridmlip import Grid
-from gridmlip.integrations.sevennet import evaluate_atoms_list # sevenn must be installed
-
-file = './data/Li10Ge(PS6)2_mp.cif'
-specie = 3
-
-### Create grid
-g = Grid.from_file(
-    file,
-    specie,
-    r_min=0.8,
-    r_cut=5.0,
-    resolution=0.2,
-    symprec=0.1,
-    empty_framework=True,
-    verbose=True
-)
-
-### Prepare inequivalent atomic configurations
-atoms_list = g.construct_cfgs(config_format='ase')
-
-### Predict energies
-energy_list, forces_list = evaluate_atoms_list(
-    atoms_list,
-    model_path='./data/checkpoint_sevennet_0.pth',
-    device='cuda',
-    compute_force=False,
-    batch_size=256
-)
-
-### Load energies
-g.load_energies(energy_list)
-
-### Determine percolation barriers
-barriers = g.percolation_barriers(n_jobs=-1)
-
-### Save .grd file for visualization in VESTA 3.0
-g.write_grd('test.grd')
-```
-### Generate defected configurations for MLIP pre-training
+### Percolation barriers with a universal MLIP
 
 ```python
 from ase.io import read
-from gridmlip.defects import DefectGenerator
+from mace.calculators import mace_mp
+import gridmlip as gm
 
-GENERATOR_PARAMS = {
-    'specie': 3,
-    'resolution': 0.25,
-    'r_min': 1.3,
-    'r_cut': 7.5,
-    'symprec': 0.1,
-    'max_sep_dist': 'auto',
-    'upper_bound': 6.0,
-}
+atoms = read("Li10Ge(PS6)2_mp.cif")
+grid = gm.Grid(atoms, specie="Li", resolution=0.2, r_min=0.8)
 
-gen = DefectGenerator(atoms, **GENERATOR_PARAMS)
-
-### Symmetrically distinct defect configurations
-cfgs_int = gen.generate_dataset(defect_type='int') 
-cfgs_vac = gen.generate_dataset(defect_type='vac')
-cfgs_frk = gen.generate_dataset(defect_type='frenkel')
+emap = grid.evaluate(mace_mp(model="medium"))   # MACE / SevenNet calculators are batched automatically
+emap.percolation_barriers()                     # {'e1d': ..., 'e2d': ..., 'e3d': ...}
+emap.write("li.grd")                            # VESTA volumetric file (.grd or .cube)
+emap.save("li.npz")                             # reload with gm.EnergyMap.load("li.npz")
 ```
 
-### Find voids
+Batched predictors with explicit settings:
 
 ```python
-from ase.io import read
-from gridmlip._void_search import clustered_local_minima
+from gridmlip.predictors import mace, sevennet
 
-atoms = read('file.cif')
-
-g = Grid(atoms, specie=3, empty_framework=False)
-g.generate_mesh()
-
-clusters = clustered_local_minima(
-    -g.min_distances_data, # can be any data computed for the generated grid
-    min_distance=2.0,
-    relative_max_value=0.5,
-    cell=g.atoms.cell,
-    coord_type='cart'
-)
-
-for (pos, energy, n) in clusters:
-    print('Site', pos)
-    print('Site energy', energy) # here, energy is the minimal distances
-    print('Number of points in a cluster', n)
-
+emap = grid.evaluate(mace("medium-mpa-0", device="cuda"))          # name or path; float32 by default
+emap = grid.evaluate(mace("my_finetune.model", head="pbe"))        # multi-head models need head=
+emap = grid.evaluate(sevennet("7net-mf-ompa", modal="mpa"))
+emap = grid.evaluate(my_function)                                  # any callable list[Atoms] -> energies
 ```
 
-### Bond valence site energy calculations
+### Calculations run elsewhere (MTP, DFT, cluster jobs)
 
 ```python
-from ase.io import read
-from ions.decorate import assign_oxidation_states
-from gridmlip.integrations.bvse import bvse_distribution
-
-atoms = read('LiFePO4.cif')
-atoms = assign_oxidation_states(atoms)
-
-PARAMS = {
-    "mobile_ion": "Li+",
-    "resolution": 0.2,
-    "r_min": 0.8,
-    "r_cut": 10.0,
-    "empty_framework": True,
-    "k": 100,
-    "f": 0.74,
-}
-
-grid, energies = bvse_distribution(atoms, **PARAMS)
-grid.percolation_barriers() # energies already loaded via grid.load_energies(energies)
-
+cfgs = grid.prepare_configurations(supercell_cutoff=5.0, filename="cfgs.cfg")
+# ... compute the energies ...
+emap = grid.load_energies("processed.cfg")      # or an array of energies in the same order
+emap.percolation_barriers()
 ```
 
+### Bond valence site energy
+
+```python
+emap = gm.bvse(atoms, "Na+", resolution=0.2)
+emap.percolation_barriers()
+emap.info["oxidation_states"]                   # charges used
+```
+
+Oxidation states are taken from `atoms.arrays["oxi_states"]` if present, otherwise assigned with
+pymatgen's BVAnalyzer (as in bvlain) and printed. The same model on an explicit grid:
+
+```python
+emap = gm.Grid(atoms, "Na", resolution=0.2, empty_framework=False).evaluate(gm.BVSE("Na+"))
+```
+
+### Local minima and void space
+
+```python
+emap.local_minima(min_distance=2.0, energy_window=0.5)   # [(position, energy, n_points), ...]
+grid.percolation_radii()                                 # largest percolating free sphere
+grid.min_distances                                       # distance to the host, 3D array
+```
+
+### Defect configurations for MLIP training
+
+```python
+from gridmlip.defects import interstitials, vacancies, frenkel_pairs
+
+params = dict(resolution=0.25, r_min=1.3, r_cut=7.5)
+cfgs = interstitials(atoms, 3, **params)
+cfgs += vacancies(atoms, 3, upper_bound=6.0, **params)
+cfgs += frenkel_pairs(atoms, 3, **params)
+```
+
+Each configuration has `atoms.info["defect"]` set to `"interstitial"`, `"vacancy"` or `"frenkel_pair"`.
+
+### Migrating from 0.2
+
+| 0.2 | 0.3 |
+|---|---|
+| `grid.construct_cfgs()` | `grid.prepare_configurations()` |
+| `grid.load_energies(e); grid.percolation_barriers()` | `grid.load_energies(e).percolation_barriers()` |
+| `grid.read_processed_cfgs(f)` | `grid.load_energies(f)` |
+| `grid.write_grd("x")` | `emap.write("x.grd")` |
+| `bvse_distribution(atoms, "Li+")` | `gm.bvse(atoms, "Li+")` |
+| `integrations.mace.evaluate_atoms_list(...)` | `grid.evaluate(predictors.mace(...))` |
+| `DefectGenerator(...).generate_dataset("int")` | `defects.interstitials(...)` |
+
+The 0.2 names still work in 0.3 and emit a `DeprecationWarning`; they will be removed in 0.4.
 
 
 ## Notebooks

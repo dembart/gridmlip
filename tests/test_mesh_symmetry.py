@@ -1,7 +1,5 @@
 """The symmetry-reduced mesh must reproduce the brute-force (no symmetry) result exactly."""
 import warnings
-from functools import partial
-
 import numpy as np
 import pytest
 from spglib import get_symmetry_dataset
@@ -92,21 +90,23 @@ def test_oxidation_states_lower_symmetry():
     assert len(ordered.rotations) < len(plain.rotations)
 
 
-def test_bvse_charge_ordered_matches_no_symmetry(monkeypatch):
+def test_bvse_charge_ordered_matches_no_symmetry():
+    """Charges set before the grid: the grid symmetry itself respects the charge ordering."""
     pytest.importorskip("ions")
-    import gridmlip.integrations.bvse as bvse_mod
+    from gridmlip import BVSE
 
     atoms = nacl()
     oxi = atoms.get_array("oxi_states").copy()
     oxi[np.flatnonzero(atoms.numbers == 11)[0]] = 2  # one Na2+ breaks the cubic symmetry
     atoms.set_array("oxi_states", oxi)
-    # 5.64/0.2349 -> 24 points (commensurate); k large enough that r_cut, not k, truncates
-    kw = dict(r_cut=8.0, resolution=0.2349, r_min=0.8, k=400)
+    # 5.64/0.2349 -> 24 points (commensurate); k large enough that the cutoff, not k, truncates
+    kw = dict(specie=3, resolution=0.2349, r_cut=8.0, r_min=0.8)
+    model = BVSE("Li+", cutoff=8.0, k=400)
 
-    sym, _ = bvse_mod.bvse_distribution(atoms.copy(), "Li+", **kw)
-    monkeypatch.setattr(bvse_mod, "Grid", partial(Grid, symprec=None))
-    nosym, _ = bvse_mod.bvse_distribution(atoms.copy(), "Li+", **kw)
+    sym = Grid(atoms, **kw)
+    nosym = Grid(atoms, symprec=None, **kw)
+    a, b = sym.evaluate(model), nosym.evaluate(model)
 
     assert sym.mesh_shape == nosym.mesh_shape
     assert len(sym.ir_grid_points) < len(nosym.ir_grid_points)
-    np.testing.assert_allclose(sym.data, nosym.data, rtol=0, atol=1e-10)
+    np.testing.assert_allclose(a.values, b.values, rtol=0, atol=1e-10)

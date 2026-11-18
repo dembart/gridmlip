@@ -7,7 +7,7 @@ import numpy as np
 from ase.io import write
 
 from .core import Grid
-from .defects import DefectGenerator
+from .defects import _DefectSampler
 from .utils import save_config
 from .select import fps_with_stop
 from .perturb import rattle_atoms
@@ -121,7 +121,7 @@ def generate_defects_dataset(
             print(f"Skipping current structure (not passing max_atoms_in_cfg ({len(base)} > {max_atoms_in_cfg}))")
             continue
 
-        gen = DefectGenerator(
+        gen = _DefectSampler(
             atoms,
             specie=specie,
             resolution=resolution,

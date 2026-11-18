@@ -40,6 +40,7 @@ fast = [
 ]
 scikit-learn = ["scikit-learn"]
 dscribe = ["dscribe"]
+bvse = ["pymatgen"]
 dataset = ["scikit-learn", "dscribe", "vesin", "pyyaml"]
 test = ["pytest"]
 mace = ["mace-torch"]

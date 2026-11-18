@@ -30,11 +30,13 @@ def _close(new, old, tol):
 @pytest.mark.parametrize("name", BVSE_CASES)
 def test_bvse_barriers_match_previous_version(name):
     pytest.importorskip("ions")
-    from gridmlip.integrations.bvse import bvse_distribution
+    import gridmlip as gm
 
     build, ion = BVSE_CASES[name]
-    grid, _ = bvse_distribution(build(), ion, empty_framework=True, **REF["params"])
-    new = grid.percolation_barriers()
+    p = REF["params"]
+    emap = gm.bvse(build(), ion, resolution=p["resolution"], r_min=p["r_min"], cutoff=p["r_cut"],
+                   k=p["k"], f=p["f"], empty_framework=True)
+    new = emap.percolation_barriers()
     old = REF["bvse"][name]["barriers"]
     for key in ("e1d", "e2d", "e3d"):
         assert _close(new[key], old[key], E_TOL), f"{name} {key}: new {new[key]:.4f} vs old {old[key]:.4f}"

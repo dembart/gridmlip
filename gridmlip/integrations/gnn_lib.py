@@ -46,6 +46,10 @@ def evaluate_atoms_list_cgcnn(
     energies and forces (None if compute_force=False)
     """
 
+    import warnings
+    warnings.warn("integrations.gnn_lib is deprecated and will be removed in gridmlip 0.4; "
+                  "use a custom predictor (callable list[Atoms] -> energies) with Grid.evaluate() instead.", DeprecationWarning, stacklevel=2)
+
     try:
         import torch
         from torch.utils.data import DataLoader

@@ -1,6 +1,26 @@
 # Changelog
 
-## Unreleased: correctness fixes (no API change)
+## 0.3.0: new API
+
+### Added
+- `Grid.evaluate(model)` returns an `EnergyMap`. `model` can be an ASE calculator (MACE and SevenNet calculators are batched automatically), a predictor, any callable `list[Atoms] -> energies`, or a point model such as `BVSE`.
+- `EnergyMap`: `percolation_barriers()`, `local_minima()`, `write(".grd"/".cube")`, `save()`/`load()` (`.npz`), `values`, `info` (model, settings, charges used).
+- `Grid.points`, `len(grid)`, `Grid.prepare_configurations(supercell_cutoff=...)` (each configuration carries `info["grid_index"]`), `Grid.min_distances`, `Grid.summary()`.
+- `Grid.load_energies(array | file)` returns an `EnergyMap`.
+- `gridmlip.predictors.mace(model, head=, device=, dtype="float32", batch_size="auto")`: `model` is a path, a `mace_mp` name or a torch model. Multi-head models require `head=`.
+- `gridmlip.predictors.sevennet(model, modal=...)`: not covered by tests yet.
+- `gridmlip.BVSE(ion, ...)` and `gridmlip.bvse(atoms, ion)`. Oxidation states come from `atoms.arrays["oxi_states"]`, or are assigned with pymatgen's BVAnalyzer (bvlain settings), printed and recorded. If charges set inside `evaluate` break the grid symmetry, evaluation uses only the symmetry operations that keep the charges in place.
+- `gridmlip.defects.interstitials / vacancies / frenkel_pairs`: configurations are tagged with `info["defect"]` and `info["defect_site"]`.
+- `specie` accepts symbols ("Li") as well as atomic numbers.
+
+### Changed
+- `Grid(verbose=False)` is now the default; call `grid.summary()` to see the mesh summary.
+- `prepare_configurations(config_format="pymatgen")` now places the ion at Cartesian coordinates. Before, Cartesian values were passed as fractional ones.
+
+### Deprecated (removed in 0.4)
+- `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`; `DefectGenerator`; `integrations.bvse.bvse_distribution`; `integrations.mace/sevennet/gnn_lib.evaluate_atoms_list*`.
+
+## 0.3.0: correctness fixes (included in 0.3.0)
 
 ### Fixed
 - **Symmetry reduction could assign wrong values without warning.** Translations were rounded onto the mesh (`rint(t*(n-1))`), which is wrong for 1/3 and 1/6 translations (3₁, 6₁ screw axes, R-centering) and for 1/4 unless `n-1` happened to be divisible by 4. Cells that were symmetric only within `symprec` (e.g. a=4.00, b=4.04 Å) were also symmetrized using different numbers of points along the axes a rotation swaps. Worst errors in the min-distance field were 0.11–0.20 Å for quartz, P6₁, P4₁ and LiCoO₂, and 0.57 Å for the pseudo-tetragonal cell. Now each axis gets enough points for every operation to map the mesh onto itself, and any operation that still doesn't is dropped with a warning.

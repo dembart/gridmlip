@@ -44,6 +44,10 @@ def evaluate_atoms_list(
     energies and forces (None if compute_force=False)
     """
 
+    import warnings
+    warnings.warn("integrations.sevennet is deprecated and will be removed in gridmlip 0.4; "
+                  "use gridmlip.predictors.sevennet(model_path) with Grid.evaluate() instead.", DeprecationWarning, stacklevel=2)
+
     try:
         from torch_geometric.loader import DataLoader
         from sevenn.train import dataload

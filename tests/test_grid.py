@@ -13,22 +13,23 @@ def blocked_grid():
     g.generate_mesh()
     accessible = g.min_dists > g.r_min
     assert (~accessible).any()
-    g.load_energies(-g.min_dists[accessible])
+    g.emap = g.load_energies(-g.min_dists[accessible])
     return g
 
 
 def test_blocked_points_are_inf(blocked_grid):
     g = blocked_grid
     blocked = (g.min_dists <= g.r_min)[g.mapping].reshape(g.mesh_shape)
-    assert np.isinf(g.data[blocked]).all()
-    assert np.isfinite(g.data[~blocked]).all()
-    assert np.nanmax(np.abs(g.data[~blocked])) < 1e3
+    v = g.emap.values
+    assert np.isinf(v[blocked]).all()
+    assert np.isfinite(v[~blocked]).all()
+    assert np.nanmax(np.abs(v[~blocked])) < 1e3
 
 
 def test_percolation_with_blocked_points(blocked_grid):
     for backend in ("numba", "scipy"):
         pytest.importorskip("numba") if backend == "numba" else None
-        r = blocked_grid.percolation_barriers(backend=backend)
+        r = blocked_grid.emap.percolation_barriers(backend=backend)
         assert np.isfinite(r["e3d"])
 
 
@@ -37,8 +38,7 @@ def test_nan_energy_becomes_blocked():
     g.generate_mesh()
     e = -g.min_dists[g.min_dists > g.r_min]
     e[0] = np.nan
-    g.load_energies(e)
-    assert not np.isnan(g.data).any()
+    assert not np.isnan(g.load_energies(e).values).any()
 
 
 def test_load_energies_checks_length(blocked_grid):
@@ -47,13 +47,13 @@ def test_load_energies_checks_length(blocked_grid):
 
 
 def test_configurations_match_energies(blocked_grid):
-    cfgs = blocked_grid.construct_cfgs()
-    assert len(cfgs) == len(blocked_grid.energies)
+    cfgs = blocked_grid.prepare_configurations()
+    assert len(cfgs) == len(blocked_grid) == blocked_grid.emap.info["grid"]["n_points"]
 
 
 def test_volumetric_files_are_finite(blocked_grid, tmp_path):
-    blocked_grid.write_grd(str(tmp_path / "x"))
-    blocked_grid.write_cube(str(tmp_path / "x"))
+    blocked_grid.emap.write(tmp_path / "x.grd")
+    blocked_grid.emap.write(tmp_path / "x.cube")
     lines = (tmp_path / "x.grd").read_text().splitlines()
     assert lines[2].split() == [str(n) for n in blocked_grid.mesh_shape]
     values = np.array(lines[3:], dtype=float)
@@ -67,16 +67,10 @@ def test_radii_without_explicit_generate_mesh():
     assert r["r3d"] > 1.5
 
 
-def test_barriers_without_energies_raise():
-    g = Grid(nacl(), specie=11, resolution=0.3, verbose=False)
-    with pytest.raises(RuntimeError, match="No energies"):
-        g.percolation_barriers()
-
-
 def test_void_search_finds_octahedral_sites():
     atoms = nacl()
     g = Grid(atoms, specie=11, resolution=0.2, r_cut=5.0, r_min=0.5, verbose=False)
-    sites = clustered_local_minima(-g.min_distances_data, min_distance=2.0,
+    sites = clustered_local_minima(-g.min_distances, min_distance=2.0,
                                    relative_max_value=0.2, cell=g.cell[:], coord_type="frac")
     assert len(sites) == 4
     na = atoms.get_scaled_positions()[atoms.numbers == 11]
