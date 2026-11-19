@@ -55,7 +55,7 @@ def test_view_page_is_self_contained(emap, tmp_path):
 def test_view_options_reach_the_page(emap):
     d = page_data(emap.view())
     assert d["opts"]["supercell"] == [1, 1, 1] and d["opts"]["theme"] == "dark"
-    assert d["opts"]["sites"] is False and d["opts"]["mobile_ions"] is True
+    assert d["opts"]["sites"] is False and d["opts"]["hide"] == []
     assert d["opts"]["level"] == pytest.approx(emap.percolation_barriers()["e1d"] + 0.01)
 
     d = page_data(view(emap, level=0.7, supercell=(1, 2, 2), theme="light", bonds=False, along="c"))
