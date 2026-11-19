@@ -11,7 +11,7 @@ def _import_sevenn():
         from sevenn.train.dataload import unlabeled_atoms_to_graph
         import sevenn._keys as KEY
     except ImportError as exc:
-        raise ImportError("SevenNet is required. Install with `pip install 'gridmlip[sevenn]'`.") from exc
+        raise ImportError("SevenNet is required. Install it with `pip install sevenn`.") from exc
 
     def to_graph(atoms, cutoff):  # same graph construction as SevenNetCalculator
         return AtomGraphData.from_numpy_dict(unlabeled_atoms_to_graph(atoms, cutoff, with_shift=False))
@@ -126,7 +126,7 @@ def sevennet(model, *, modal=None, device="auto", batch_size=64, progress=True):
     try:
         from sevenn.calculator import SevenNetCalculator
     except ImportError as exc:
-        raise ImportError("SevenNet is required. Install with `pip install 'gridmlip[sevenn]'`.") from exc
+        raise ImportError("SevenNet is required. Install it with `pip install sevenn`.") from exc
     kwargs = {"modal": modal} if modal is not None else {}
     calc = SevenNetCalculator(model=str(model), device=resolve_device(device), **kwargs)
     pred = SevenNetPredictor.from_calculator(calc, batch_size=batch_size, progress=progress)

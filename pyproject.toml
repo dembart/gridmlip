@@ -12,25 +12,25 @@ authors = [
 ]
 keywords = ["MLIP", "percolation barrier", "irreducible mesh"]
 classifiers = [
-    "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Programming Language :: Python :: 3.15",
 ]
+requires-python = ">=3.10"
 dependencies = [
     "numpy",
-    "spglib",
-    "ase",
-    "ions",
-    "tqdm",
     "scipy",
-    "fpsample",
+    "ase",
+    "spglib",
+    "tqdm",
+    "ions",
+    "pymatgen",
 ]
 
 [project.optional-dependencies]
+# numba: 10-100x faster percolation analysis (otherwise the scipy backend is used)
 fast = [
     # Intel Macs: use the last version with binary wheels
     "numba>=0.62,<0.63; sys_platform == 'darwin' and platform_machine == 'x86_64'",
@@ -38,14 +38,10 @@ fast = [
     # Apple Silicon, Linux, Windows
     "numba>=0.62,<0.69; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
-scikit-learn = ["scikit-learn"]
-dscribe = ["dscribe>=2"]
-bvse = ["pymatgen"]
-dataset = ["scikit-learn", "dscribe>=2", "fpsample", "vesin", "pyyaml"]
+# dataset generation: SOAP, PCA, farthest point sampling, rattling, YAML settings
+ml = ["dscribe>=2", "scikit-learn", "fpsample", "vesin", "pyyaml"]
 test = ["pytest"]
-mace = ["mace-torch"]
-sevenn = ["sevenn"]
-gnn_lib = ["gnn_lib"]
+# MLIPs (mace-torch, sevenn, gnn_lib) are integrations: used if installed, not extras
 
 [project.scripts]
 gridmlip = "gridmlip.cli:main"

@@ -38,7 +38,10 @@ def fps_with_stop(
     
 
     """
-    import fpsample
+    try:
+        import fpsample
+    except ImportError as exc:
+        raise ImportError("FPS requires fpsample. Install with `pip install 'gridmlip[ml]'`.") from exc
 
     points = np.ascontiguousarray(points, dtype=np.float32)
     N, D = points.shape
@@ -129,6 +132,9 @@ def select_fps(
     if n <= 2:
         return np.arange(min(n, max_samples), dtype=np.int64)
     if pca is not None:
-        from sklearn.decomposition import PCA
+        try:
+            from sklearn.decomposition import PCA
+        except ImportError as exc:
+            raise ImportError("PCA requires scikit-learn. Install with `pip install 'gridmlip[ml]'`.") from exc
         X = PCA(n_components=pca, svd_solver="full").fit_transform(X)
     return fps_with_stop(X, max_samples=min(max_samples, n), rel_tol=rel_tol, start_idx=start_idx)

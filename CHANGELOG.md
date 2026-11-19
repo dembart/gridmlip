@@ -25,6 +25,7 @@
 - `rattle_atoms`: if the input already has a pair closer than `d_min` (an ion placed at `r_min < d_min`), the check now uses that pair's distance. Before, every attempt failed and the structure was returned without position noise.
 
 ### Changed
+- Installation: `pip install gridmlip` brings everything except dataset tools (numpy, scipy, ase, spglib, tqdm, ions, pymatgen). Extras: `fast` (numba, 10-100x faster percolation analysis; without it, importing gridmlip warns that the scipy backend is used) and `ml` (dscribe>=2, scikit-learn, fpsample, vesin, pyyaml for dataset generation). MLIP libraries (mace-torch, sevenn, gnn_lib) are integrations used when installed; the `mace`, `sevenn`, `gnn_lib`, `bvse`, `dscribe`, `scikit-learn` and `dataset` extras are removed. `requires-python = ">=3.10"`; the license classifier is corrected to MIT.
 - `Grid` internals are private: `ir_grid_points`, `mapping`, `min_dists`, `mesh_frac`, `mesh_cart` and `generate_mesh()` now start with `_`. Use `grid.points`, `len(grid)`, `grid.min_distances` and `grid.mesh_shape` (now a property that builds the mesh on first access).
 - Removed `gridmlip.select`, `gridmlip.perturb`, `gridmlip.utils` and `gridmlip.integrations.dscribe`; their code now lives in `gridmlip.dataset.selection` (`fps_with_stop`), `.rattle` (`rattle_atoms`, `rattle_positions`, `distort_cell_bounded`), `.settings` (`save_config`, `load_config`) and `.features` (`featurize_soap`).
 - `Grid(verbose=False)` is now the default; call `grid.summary()` to see the mesh summary.
@@ -47,6 +48,7 @@
 - Install hints now point to `gridmlip[fast]` and `gridmlip[dataset]`.
 
 ### Changed
+- Installation: `pip install gridmlip` brings everything except dataset tools (numpy, scipy, ase, spglib, tqdm, ions, pymatgen). Extras: `fast` (numba, 10-100x faster percolation analysis; without it, importing gridmlip warns that the scipy backend is used) and `ml` (dscribe>=2, scikit-learn, fpsample, vesin, pyyaml for dataset generation). MLIP libraries (mace-torch, sevenn, gnn_lib) are integrations used when installed; the `mace`, `sevenn`, `gnn_lib`, `bvse`, `dscribe`, `scikit-learn` and `dataset` extras are removed. `requires-python = ">=3.10"`; the license classifier is corrected to MIT.
 - **The mesh is now periodic:** point `i` sits at `i/n`, and the boundary plane is no longer repeated. `grid.data` has shape `n` (old: `n` including the duplicated plane), and `n` may be rounded up so the mesh fits the symmetry. Barriers differ from 0.2.7 within the usual mesh discretization error.
 - Irreducible-point search uses O(N) memory: about 0.06 GB vs 5.3 GB for an 84³ Fd-3m mesh.
 - `vesin`, `pyyaml`, `scikit-learn` and `dscribe` are imported lazily and listed in the new `dataset` extra. `joblib` was removed from the dependencies (unused).

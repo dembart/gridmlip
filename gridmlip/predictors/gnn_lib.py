@@ -13,7 +13,7 @@ def _import_gnn_lib():
         from gnn_lib.graph_data import InMemoryDataset, atoms2data
         from gnn_lib.data_utils import collate_fn
     except ImportError as exc:
-        raise ImportError("gnn_lib is required. Install with `pip install 'gridmlip[gnn_lib]'`.") from exc
+        raise ImportError("gnn_lib is required. Install it with `pip install gnn_lib`.") from exc
     return torch, DataLoader, InMemoryDataset, atoms2data, collate_fn
 
 

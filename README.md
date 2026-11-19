@@ -26,10 +26,12 @@ percolation barriers. It also generates defect configurations and training sets 
 ## Installation
 
 ```bash
-pip install "gridmlip[fast]"
+pip install gridmlip
+pip install "gridmlip[fast]"     # numba: 10-100x faster percolation analysis
+pip install "gridmlip[ml]"       # training-set tools: SOAP, FPS, rattling
 ```
 
-Optional extras: `mace`, `sevenn`, `gnn_lib`, `bvse`, `dataset`, e.g. `pip install "gridmlip[fast,mace]"`.
+MLIPs are used if installed: `pip install mace-torch`, `sevenn` or `gnn_lib`; any ASE calculator works.
 
 ## Percolation barriers with a batched MLIP
 

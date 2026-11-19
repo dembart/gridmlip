@@ -22,7 +22,10 @@ def to_serializable(obj):
 
 def save_config(config, output_dir, filename="config.yaml"):
     """Save generation parameters to a YAML file."""
-    import yaml
+    try:
+        import yaml
+    except ImportError as exc:
+        raise ImportError("Dataset settings need pyyaml. Install with `pip install 'gridmlip[ml]'`.") from exc
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -43,7 +46,10 @@ def save_config(config, output_dir, filename="config.yaml"):
 
 def load_config(config_file):
     """Load generation parameters from a YAML file."""
-    import yaml
+    try:
+        import yaml
+    except ImportError as exc:
+        raise ImportError("Dataset settings need pyyaml. Install with `pip install 'gridmlip[ml]'`.") from exc
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 

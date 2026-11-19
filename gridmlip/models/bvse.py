@@ -39,7 +39,7 @@ def assign_oxidation_states(atoms, forbidden_species=_FORBIDDEN_SPECIES):
         from pymatgen.io.ase import AseAtomsAdaptor
     except ImportError as exc:
         raise ImportError(
-            "Assigning oxidation states requires pymatgen (`pip install 'gridmlip[bvse]'`), or set "
+            "Assigning oxidation states requires pymatgen (`pip install pymatgen`), or set "
             "atoms.arrays['oxi_states'] / pass BVSE(oxidation_states=...)."
         ) from exc
     atoms = atoms.copy()

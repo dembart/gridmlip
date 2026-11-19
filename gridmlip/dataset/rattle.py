@@ -97,7 +97,7 @@ def rattle_atoms(
         from vesin import ase_neighbor_list
     except ImportError as exc:
         raise ImportError(
-            "rattle_atoms requires vesin. Install with `pip install 'gridmlip[dataset]'`."
+            "rattle_atoms requires vesin. Install with `pip install 'gridmlip[ml]'`."
         ) from exc
 
     rattled = atoms.copy()

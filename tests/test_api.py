@@ -225,3 +225,22 @@ def test_deprecated_names_are_gone():
         import gridmlip.integrations  # noqa: F401
     import gridmlip.defects
     assert not hasattr(gridmlip.defects, "DefectGenerator")
+
+
+def test_warning_and_scipy_fallback_without_numba():
+    import subprocess, sys
+    code = ("import sys, warnings; sys.modules['numba'] = None; warnings.simplefilter('always'); "
+            "import gridmlip as gm; from ase.build import bulk; "
+            "g = gm.Grid(bulk('NaCl', 'rocksalt', a=5.64, cubic=True), 'Na', resolution=0.5, r_min=1.0); "
+            "print(g.percolation_radii()['r3d'] > 1.5)")
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert "numba is not installed" in out.stderr and "gridmlip[fast]" in out.stderr
+    assert out.stdout.strip() == "True"
+
+
+def test_no_numba_warning_when_installed():
+    import importlib.util, subprocess, sys
+    if importlib.util.find_spec("numba") is None:
+        pytest.skip("numba not installed")
+    out = subprocess.run([sys.executable, "-W", "always", "-c", "import gridmlip"], capture_output=True, text=True, check=True)
+    assert "numba is not installed" not in out.stderr

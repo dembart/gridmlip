@@ -12,7 +12,7 @@ def _import_mace():
         from mace import data
         from mace.tools import torch_geometric, torch_tools, utils
     except ImportError as exc:
-        raise ImportError("MACE is required. Install with `pip install 'gridmlip[mace]'`.") from exc
+        raise ImportError("MACE is required. Install it with `pip install mace-torch`.") from exc
     return torch, data, torch_geometric, torch_tools, utils
 
 
