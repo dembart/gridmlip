@@ -78,3 +78,25 @@ def test_multihead_requires_head(grid):
     e1 = mace(path, head=heads[-1], device="cpu", dtype="float64")(cfgs)
     assert e0.shape == e1.shape == (5,)
     assert not np.allclose(e0, e1)  # heads give different energies
+
+
+def test_batched_forces_stress_descriptors_equal_calculator(grid, calc):
+    cfgs = grid.prepare_configurations()[:12]
+    pred = as_predictor(calc)
+    pred.batch_size = 5                              # several batches, one partial
+    out = pred.predict(cfgs, ("energy", "forces", "stress", "descriptors"))
+    assert set(out) == {"energy", "forces", "stress", "descriptors"}
+    assert out["stress"].shape == (12, 6) and len(out["forces"]) == len(out["descriptors"]) == 12
+    for i, c in enumerate(cfgs):
+        c = c.copy()
+        c.calc = calc
+        np.testing.assert_allclose(out["energy"][i], c.get_potential_energy(), rtol=0, atol=1e-6)
+        np.testing.assert_allclose(out["forces"][i], c.get_forces(), rtol=0, atol=1e-6)
+        np.testing.assert_allclose(out["stress"][i], c.get_stress(), rtol=0, atol=1e-7)
+        np.testing.assert_allclose(out["descriptors"][i], calc.get_descriptors(c), rtol=0, atol=1e-6)
+
+
+def test_energy_only_call_matches_predict(grid, calc):
+    cfgs = grid.prepare_configurations()[:6]
+    pred = as_predictor(calc)
+    np.testing.assert_array_equal(pred(cfgs), pred.predict(cfgs)["energy"])

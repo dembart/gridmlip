@@ -62,6 +62,21 @@ emap = grid.evaluate(gnn_lib("cgcnn.pth", r_cut=5.0))                # gnn_lib m
 emap = grid.evaluate(my_function)                                  # any callable list[Atoms] -> energies
 ```
 
+Forces, stress and per-atom descriptors come from the same batched pass:
+
+```python
+pred = mace("medium-mpa-0", device="cuda")
+cfgs = grid.prepare_configurations()
+out = pred.predict(cfgs, ("energy", "forces", "stress", "descriptors"))
+out["energy"]        # (n,) eV
+out["forces"]        # list of (n_atoms, 3) arrays, eV/A
+out["stress"]        # (n, 6) Voigt xx yy zz yz xz xy, eV/A^3 (ASE convention)
+out["descriptors"]   # list of (n_atoms, n_features) arrays
+```
+
+`mace`, `sevennet` and `gnn_lib` predictors support all four (computed in batches); any ASE calculator
+supports energy, forces and stress (one structure at a time).
+
 ### Calculations run elsewhere (MTP, DFT, cluster jobs)
 
 ```python

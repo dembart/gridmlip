@@ -12,6 +12,7 @@
 - `gridmlip.predictors.gnn_lib(model, r_cut=5.0, n_max_neighbors=None)`: gnn_lib models such as CGCNN, batched; tested against a stand-in of the gnn_lib interface only.
 - `gridmlip.BVSE(ion, ...)` and `gridmlip.bvse(atoms, ion)`. Oxidation states come from `atoms.arrays["oxi_states"]`, or are assigned with pymatgen's BVAnalyzer (bvlain settings), printed and recorded. If charges set inside `evaluate` break the grid symmetry, evaluation uses only the symmetry operations that keep the charges in place.
 - `gridmlip.defects.interstitials / vacancies / frenkel_pairs`: configurations are tagged with `info["defect"]` and `info["defect_site"]`.
+- Predictors: `pred.predict(atoms_list, properties)` returns any of `energy`, `forces`, `stress` (Voigt, eV/Å³, ASE convention) and per-atom `descriptors`, computed in the same batched pass for `mace`, `sevennet` and `gnn_lib`. MACE results are tested against `MACECalculator` (energy, forces, stress, `get_descriptors`). `pred(atoms_list)` still returns energies only.
 - `specie` accepts symbols ("Li") as well as atomic numbers.
 
 - Dataset building blocks in `gridmlip.dataset`: `soap_features`, `select_fps` (PCA + FPS, same selection as 0.2.7), `rattle` (reproducible perturbation keyed by seed, `material_id` and the configuration's content; `key=j` reproduces 0.2.7), `save_settings`/`load_settings` (settings + library versions).

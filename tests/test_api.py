@@ -72,6 +72,21 @@ def test_evaluate_ase_calculator(al_grid):
     assert np.isfinite(emap.percolation_barriers()["e3d"])
 
 
+def test_calculator_predictor_properties(al_grid):
+    pred = as_predictor(EMT())
+    cfgs = al_grid.prepare_configurations()[:3]
+    out = pred.predict(cfgs, ("energy", "forces", "stress"))
+    c = cfgs[1].copy()
+    c.calc = EMT()
+    np.testing.assert_allclose(out["forces"][1], c.get_forces())
+    np.testing.assert_allclose(out["stress"][1], c.get_stress())
+    with pytest.raises(NotImplementedError, match="descriptors"):
+        pred.predict(cfgs, ("descriptors",))
+    with pytest.raises(ValueError, match="Unknown properties"):
+        pred.predict(cfgs, ("charge",))
+    assert pred.predict([], ("energy", "forces"))["energy"].shape == (0,)
+
+
 def test_evaluate_rejects_non_models(al_grid):
     with pytest.raises(TypeError, match="Cannot evaluate"):
         al_grid.evaluate(42)
