@@ -1,6 +1,4 @@
 """The v0.3 public API: Grid -> evaluate / load_energies -> EnergyMap."""
-import warnings
-
 import numpy as np
 import pytest
 from ase.build import bulk
@@ -175,39 +173,21 @@ def test_bvse_oxidation_states_dict(need_ions):
 
 # ---------------------------------------------------------------- defects
 
-def test_defect_functions_match_deprecated_generator(need_ions):
-    from gridmlip.defects import DefectGenerator, frenkel_pairs, interstitials, vacancies
+def test_defect_functions(need_ions):
+    from gridmlip.defects import frenkel_pairs, interstitials, vacancies
 
     atoms = lifepo4()
     kw = dict(resolution=0.4, r_min=1.3, r_cut=6.0)
-    with pytest.warns(DeprecationWarning):
-        gen = DefectGenerator(atoms, 3, **kw)
-    for func, kind, name in [(interstitials, "int", "interstitial"),
-                             (vacancies, "vac", "vacancy"),
-                             (frenkel_pairs, "frenkel", "frenkel_pair")]:
-        assert func(atoms, 3, dry_run=True, **kw) == gen.generate_dataset(kind, dry_run=True)
+    for func, name in [(interstitials, "interstitial"), (vacancies, "vacancy"),
+                       (frenkel_pairs, "frenkel_pair")]:
         cfgs = func(atoms, 3, **kw)
-        assert cfgs and all(c.info["defect"] == name for c in cfgs)
+        assert func(atoms, 3, dry_run=True, **kw)["points"] == len(cfgs) > 0
+        assert all(c.info["defect"] == name for c in cfgs)
 
 
-# ------------------------------------------------------- deprecated API
-
-def test_old_workflow_still_works_with_warnings(tmp_path, need_ions):
-    g = Grid(nacl(), 11, resolution=0.3, r_min=1.5)
-    with pytest.warns(DeprecationWarning):
-        cfgs = g.construct_cfgs()
-    g.load_energies(probe_distance_energy(cfgs))
-    with pytest.warns(DeprecationWarning):
-        r = g.percolation_barriers()
-    assert r == g.load_energies(probe_distance_energy(cfgs)).percolation_barriers()
-    with pytest.warns(DeprecationWarning):
-        g.write_grd(str(tmp_path / "old"))
-    assert (tmp_path / "old.grd").exists()
-
-    from gridmlip.integrations.bvse import bvse_distribution
-    with pytest.warns(DeprecationWarning):
-        grid, energies = bvse_distribution(nacl(), "Na+", resolution=0.3)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        old = grid.percolation_barriers()
-    assert old == gm.bvse(nacl(), "Na+", resolution=0.3, r_min=0.8).percolation_barriers()
+def test_deprecated_names_are_gone():
+    assert not hasattr(Grid, "construct_cfgs") and not hasattr(Grid, "write_grd")
+    with pytest.raises(ImportError):
+        import gridmlip.integrations  # noqa: F401
+    import gridmlip.defects
+    assert not hasattr(gridmlip.defects, "DefectGenerator")

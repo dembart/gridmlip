@@ -70,7 +70,7 @@ def test_rattle_streams_differ_by_seed_copy_and_material(cfgs):
 def test_rattle_key_reproduces_gridmlip_027(cfgs):
     """key=j reproduces the 0.2.7 pipeline: _make_rng(master_seed, material_id, j) + rattle_atoms."""
     from gridmlip.dataset._legacy import _make_rng
-    from gridmlip.perturb import rattle_atoms
+    from gridmlip.dataset.rattle import rattle_atoms
 
     c = cfgs[5]
     old = rattle_atoms(c, rng=_make_rng(42, "lfp", 5), d_min=1.0)
@@ -111,7 +111,7 @@ def test_soap_and_select_edge_cases(cfgs):
 
 def test_select_fps_matches_027_pipeline(cfgs):
     from sklearn.decomposition import PCA
-    from gridmlip.select import fps_with_stop
+    from gridmlip.dataset.selection import fps_with_stop
 
     X = soap_features(cfgs)
     old = fps_with_stop(PCA(n_components=0.95, svd_solver="full").fit_transform(X),
@@ -197,9 +197,12 @@ def test_settings_reject_typos():
         merge_settings({"rattle": {"pos_sdt": 0.03}})
 
 
-def test_old_pipeline_is_deprecated(tmp_path):
+def test_legacy_pipeline_runs_without_warnings(tmp_path):
     from gridmlip.dataset import generate_defects_dataset
 
-    with pytest.warns(DeprecationWarning):
-        generate_defects_dataset([lifepo4()], output_dir=tmp_path, specie=3, resolution=0.6,
-                                 defect_type="int", max_samples=5)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        out = generate_defects_dataset([lifepo4()], output_dir=tmp_path, specie=3, resolution=0.6,
+                                       defect_type="int", max_samples=5)
+    assert len(out) == 1 and 0 < len(out[0]) <= 5
+    assert (tmp_path / "dataset_0.xyz").exists()

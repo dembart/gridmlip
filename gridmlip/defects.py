@@ -262,17 +262,6 @@ class _DefectSampler:
         return cfgs
 
 
-class DefectGenerator(_DefectSampler):
-    """Deprecated: use interstitials(), vacancies() and frenkel_pairs()."""
-
-    def __init__(self, *args, **kwargs):
-        import warnings
-        warnings.warn("DefectGenerator is deprecated and will be removed in gridmlip 0.4; use "
-                      "gridmlip.defects.interstitials / vacancies / frenkel_pairs instead.",
-                      DeprecationWarning, stacklevel=2)
-        super().__init__(*args, **kwargs)
-
-
 def interstitials(
     atoms,
     specie,

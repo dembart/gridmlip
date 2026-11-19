@@ -9,6 +9,7 @@
 - `Grid.load_energies(array | file)` returns an `EnergyMap`.
 - `gridmlip.predictors.mace(model, head=, device=, dtype="float32", batch_size="auto")`: `model` is a path, a `mace_mp` name or a torch model. Multi-head models require `head=`.
 - `gridmlip.predictors.sevennet(model, modal=...)`: not covered by tests yet.
+- `gridmlip.predictors.gnn_lib(model, r_cut=5.0, n_max_neighbors=None)`: gnn_lib models such as CGCNN, batched; tested against a stand-in of the gnn_lib interface only.
 - `gridmlip.BVSE(ion, ...)` and `gridmlip.bvse(atoms, ion)`. Oxidation states come from `atoms.arrays["oxi_states"]`, or are assigned with pymatgen's BVAnalyzer (bvlain settings), printed and recorded. If charges set inside `evaluate` break the grid symmetry, evaluation uses only the symmetry operations that keep the charges in place.
 - `gridmlip.defects.interstitials / vacancies / frenkel_pairs`: configurations are tagged with `info["defect"]` and `info["defect_site"]`.
 - `specie` accepts symbols ("Li") as well as atomic numbers.
@@ -21,11 +22,13 @@
 - `rattle_atoms`: if the input already has a pair closer than `d_min` (an ion placed at `r_min < d_min`), the check now uses that pair's distance. Before, every attempt failed and the structure was returned without position noise.
 
 ### Changed
+- Removed `gridmlip.select`, `gridmlip.perturb`, `gridmlip.utils` and `gridmlip.integrations.dscribe`; their code now lives in `gridmlip.dataset.selection` (`fps_with_stop`), `.rattle` (`rattle_atoms`, `rattle_positions`, `distort_cell_bounded`), `.settings` (`save_config`, `load_config`) and `.features` (`featurize_soap`).
 - `Grid(verbose=False)` is now the default; call `grid.summary()` to see the mesh summary.
 - `prepare_configurations(config_format="pymatgen")` now places the ion at Cartesian coordinates. Before, Cartesian values were passed as fractional ones.
 
-### Deprecated (removed in 0.4)
-- `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`; `DefectGenerator`; `integrations.bvse.bvse_distribution`; `integrations.mace/sevennet/gnn_lib.evaluate_atoms_list*`; `dataset.generate_defects_dataset`.
+### Removed
+- `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`, `min_distances_data`; `DefectGenerator`; the `gridmlip.integrations` package (`bvse.bvse_distribution`, `mace/sevennet.evaluate_atoms_list`, `gnn_lib.evaluate_atoms_list_cgcnn`). Use the new API (see the README migration table).
+- `gridmlip.dataset.generate_defects_dataset` (the 0.2.7 pipeline) is kept, without a deprecation warning, to reproduce existing datasets.
 
 ## 0.3.0: correctness fixes (included in 0.3.0)
 

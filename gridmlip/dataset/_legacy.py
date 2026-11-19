@@ -1,4 +1,7 @@
-
+"""
+The 0.2.7 dataset pipeline, kept unchanged to reproduce datasets generated with it.
+For new datasets use the `gridmlip dataset` command or the building blocks in gridmlip.dataset.
+"""
 import hashlib
 from pathlib import Path
 
@@ -8,10 +11,10 @@ from ase.io import write
 
 from ..core import Grid
 from ..defects import _DefectSampler
-from ..utils import save_config
-from ..select import fps_with_stop
-from ..perturb import rattle_atoms
-from ..integrations.dscribe import featurize_soap
+from .settings import save_config
+from .selection import fps_with_stop
+from .rattle import rattle_atoms
+from .features import featurize_soap
 
 
 
@@ -81,10 +84,6 @@ def generate_defects_dataset(
     max_attempts=100,
 ):
     
-    import warnings
-    warnings.warn("generate_defects_dataset is deprecated and will be removed in gridmlip 0.4; use the "
-                  "`gridmlip dataset` command or the recipe in the README (defects -> soap_features -> "
-                  "select_fps -> rattle).", DeprecationWarning, stacklevel=2)
     try:
         from sklearn.decomposition import PCA
     except ImportError as exc:
@@ -99,7 +98,7 @@ def generate_defects_dataset(
     # Save all function arguments except atoms_list
     config = {
         k: v for k, v in locals().items()
-        if k not in ("atoms_list", "PCA", "warnings")
+        if k not in ("atoms_list", "PCA")
     }
 
     save_config(config, output_dir)

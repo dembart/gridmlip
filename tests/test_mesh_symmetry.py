@@ -16,7 +16,7 @@ def _symmetrized_vs_exact(atoms, resolution, symprec):
              symprec=symprec, empty_framework=False, verbose=False)
     g.generate_mesh()
     exact, _ = nn_list(g.base.positions, g.mesh_cart, 6.0, g.cell)
-    return g, np.abs(g.min_distances_data.ravel() - exact).max()
+    return g, np.abs(g.min_distances.ravel() - exact).max()
 
 
 @pytest.mark.parametrize("name", SYMMETRY_CASES)

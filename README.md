@@ -53,11 +53,12 @@ emap.save("li.npz")                             # reload with gm.EnergyMap.load(
 Batched predictors with explicit settings:
 
 ```python
-from gridmlip.predictors import mace, sevennet
+from gridmlip.predictors import mace, sevennet, gnn_lib
 
 emap = grid.evaluate(mace("medium-mpa-0", device="cuda"))          # name or path; float32 by default
 emap = grid.evaluate(mace("my_finetune.model", head="pbe"))        # multi-head models need head=
 emap = grid.evaluate(sevennet("7net-mf-ompa", modal="mpa"))
+emap = grid.evaluate(gnn_lib("cgcnn.pth", r_cut=5.0))                # gnn_lib models, e.g. CGCNN
 emap = grid.evaluate(my_function)                                  # any callable list[Atoms] -> energies
 ```
 
@@ -162,9 +163,9 @@ of structures, the split into chunks, or the generation settings. Every output r
 | `bvse_distribution(atoms, "Li+")` | `gm.bvse(atoms, "Li+")` |
 | `integrations.mace.evaluate_atoms_list(...)` | `grid.evaluate(predictors.mace(...))` |
 | `DefectGenerator(...).generate_dataset("int")` | `defects.interstitials(...)` |
-| `dataset.generate_defects_dataset(...)` | `gridmlip dataset ...` or the recipe above |
+| `integrations.gnn_lib.evaluate_atoms_list_cgcnn(...)` | `grid.evaluate(predictors.gnn_lib(...))` |
 
-The 0.2 names still work in 0.3 and emit a `DeprecationWarning`; they will be removed in 0.4.
+The 0.2 names were removed in 0.3. `gridmlip.dataset.generate_defects_dataset` is kept unchanged to reproduce datasets made with 0.2.
 
 
 ## Notebooks

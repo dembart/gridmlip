@@ -16,11 +16,6 @@ from .energy_map import EnergyMap
 __author__ = "Artem Dembitskiy"
 
 
-def _deprecated(old, new):
-    warnings.warn(f"{old} is deprecated and will be removed in gridmlip 0.4; use {new} instead.",
-                  DeprecationWarning, stacklevel=3)
-
-
 _LABEL_WORDS = ("energy", "force", "stress", "virial", "dipole", "charges")
 
 
@@ -219,9 +214,6 @@ class Grid:
         self._ensure_mesh()
         return self.min_dists[self.mapping].reshape(self.mesh_shape)
 
-    # kept for backward compatibility
-    min_distances_data = min_distances
-
     def percolation_radii(self, backend: str = "auto"):
         """
         Largest radius of a sphere that percolates through the host in 1, 2 and 3 dimensions.
@@ -379,14 +371,7 @@ class Grid:
             else:
                 energies = read_energies(source)
         info = {"model": "external", "source": source} if source else {"model": "external"}
-        emap = self._energy_map(energies, self._reduction(), info)
-
-        # backward compatibility: grid.data / grid.percolation_barriers() keep working until 0.4
-        self.energies = np.asarray(energies, dtype=float).ravel()
-        self.distribution = emap.values.ravel()
-        self.data = emap.values
-        self._legacy_map = emap
-        return emap
+        return self._energy_map(energies, self._reduction(), info)
 
     def _energy_map(self, energies, reduction, info):
         ir, mapping, min_dists = reduction
@@ -409,41 +394,10 @@ class Grid:
         })
         return EnergyMap(values, self.atoms, specie=self.specie, info=info)
 
-    # ------------------------------------------------- deprecated (until 0.4)
+    # ------------------------------------------------------------- loading
 
     @classmethod
     def from_file(cls, file: str, specie, **kwargs):
         """Create a Grid from a structure file (.cfg of MLIP 2.0, or anything ASE reads)."""
         atoms = read_cfg(file)[0] if str(file).endswith(".cfg") else read(file)
         return cls(atoms, specie, **kwargs)
-
-    def construct_cfgs(self, config_format: str = "ase", filename: str | None = None,
-                       supercell_size: tuple | None = None):
-        """Deprecated: use prepare_configurations()."""
-        _deprecated("Grid.construct_cfgs()", "Grid.prepare_configurations()")
-        return self.prepare_configurations(supercell_size=supercell_size, filename=filename,
-                                           config_format=config_format, progress=True)
-
-    def read_processed_cfgs(self, filename: str, file_format: str = "xyz"):
-        """Deprecated: use load_energies(filename)."""
-        _deprecated("Grid.read_processed_cfgs()", "Grid.load_energies(filename)")
-        return self.load_energies(filename, file_format=file_format)
-
-    def _legacy(self, old, new):
-        _deprecated(f"Grid.{old}()", new)
-        if getattr(self, "_legacy_map", None) is None:
-            raise RuntimeError("No energies loaded. Call load_energies() first.")
-        return self._legacy_map
-
-    def percolation_barriers(self, upper_limit: float = 10.0, backend: str = "auto"):
-        """Deprecated: use EnergyMap.percolation_barriers()."""
-        return self._legacy("percolation_barriers", "EnergyMap.percolation_barriers()") \
-            .percolation_barriers(upper_limit=upper_limit, backend=backend)
-
-    def write_grd(self, filename: str):
-        """Deprecated: use EnergyMap.write('name.grd')."""
-        self._legacy("write_grd", "EnergyMap.write('name.grd')").write(f"{filename}.grd")
-
-    def write_cube(self, filename: str):
-        """Deprecated: use EnergyMap.write('name.cube')."""
-        self._legacy("write_cube", "EnergyMap.write('name.cube')").write(f"{filename}.cube")
