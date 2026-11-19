@@ -23,6 +23,7 @@
 - `rattle_atoms`: if the input already has a pair closer than `d_min` (an ion placed at `r_min < d_min`), the check now uses that pair's distance. Before, every attempt failed and the structure was returned without position noise.
 
 ### Changed
+- `Grid` internals are private: `ir_grid_points`, `mapping`, `min_dists`, `mesh_frac`, `mesh_cart` and `generate_mesh()` now start with `_`. Use `grid.points`, `len(grid)`, `grid.min_distances` and `grid.mesh_shape` (now a property that builds the mesh on first access).
 - Removed `gridmlip.select`, `gridmlip.perturb`, `gridmlip.utils` and `gridmlip.integrations.dscribe`; their code now lives in `gridmlip.dataset.selection` (`fps_with_stop`), `.rattle` (`rattle_atoms`, `rattle_positions`, `distort_cell_bounded`), `.settings` (`save_config`, `load_config`) and `.features` (`featurize_soap`).
 - `Grid(verbose=False)` is now the default; call `grid.summary()` to see the mesh summary.
 - `prepare_configurations(config_format="pymatgen")` now places the ion at Cartesian coordinates. Before, Cartesian values were passed as fractional ones.

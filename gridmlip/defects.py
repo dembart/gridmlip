@@ -55,7 +55,6 @@ class _DefectSampler:
             r_min=self.r_min,
             verbose=self.verbose,
         )
-        grid.generate_mesh()
         return grid
 
     @staticmethod

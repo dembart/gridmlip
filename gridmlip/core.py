@@ -119,30 +119,35 @@ class Grid:
 
     # ------------------------------------------------------------------ mesh
 
-    def generate_mesh(self):
-        """Build the mesh, its irreducible points and distances to the host (done automatically)."""
+    def _generate_mesh(self):
+        """Build the mesh, its irreducible points and distances to the host (on first use)."""
         self._mesh = Mesh.from_atoms(self.base, resolution=self.resolution, symprec=self.symprec)
-        self.mesh_shape = self._mesh.mesh_shape
-        self.ir_grid_points, self.mapping = self._mesh.get_irreducible_mapping()
-        self.mesh_frac = self._mesh.frac_coords
-        self.mesh_cart = np.dot(self.mesh_frac, self.base.cell)
-        self.min_dists, _ = nn_list(self.base.positions,
-                                    self.mesh_cart[self.ir_grid_points],
+        self._ir_grid_points, self._mapping = self._mesh.get_irreducible_mapping()
+        self._mesh_frac = self._mesh.frac_coords
+        self._mesh_cart = np.dot(self._mesh_frac, self.base.cell)
+        self._min_dists, _ = nn_list(self.base.positions,
+                                    self._mesh_cart[self._ir_grid_points],
                                     self.r_cut,
                                     self.cell)
-        self._reductions = {None: (self.ir_grid_points, self.mapping, self.min_dists)}
+        self._reductions = {None: (self._ir_grid_points, self._mapping, self._min_dists)}
         if self.verbose:
             self.summary()
 
     def _ensure_mesh(self):
         if self._mesh is None:
-            self.generate_mesh()
+            self._generate_mesh()
+
+    @property
+    def mesh_shape(self):
+        """Number of mesh points along each cell vector."""
+        self._ensure_mesh()
+        return self._mesh.mesh_shape
 
     def summary(self):
         """Print the mesh summary."""
         self._ensure_mesh()
-        total_points = self.mesh_frac.shape[0]
-        irreducible_points = self.ir_grid_points.shape[0]
+        total_points = self._mesh_frac.shape[0]
+        irreducible_points = self._ir_grid_points.shape[0]
         passed_filter = len(self)
         compression = total_points / passed_filter if passed_filter else np.nan
         print("Mesh Summary")
@@ -192,7 +197,7 @@ class Grid:
                 warnings.simplefilter("ignore")
                 mesh = Mesh(self.mesh_shape, kept_R, kept_t)
             ir, mapping = mesh.get_irreducible_mapping()
-            full_min = self.min_dists[self.mapping]
+            full_min = self._min_dists[self._mapping]
             red = (ir, mapping, full_min[ir])
         self._reductions[key] = red
         return red
@@ -201,7 +206,7 @@ class Grid:
     def points(self):
         """Cartesian coordinates of the irreducible points that are not blocked (to be evaluated)."""
         ir, _, min_dists = self._reduction()
-        return self.mesh_cart[ir][min_dists > self.r_min]
+        return self._mesh_cart[ir][min_dists > self.r_min]
 
     def __len__(self):
         """Number of points to evaluate."""
@@ -212,7 +217,7 @@ class Grid:
     def min_distances(self):
         """Distance from every mesh point to the nearest host atom, as a 3D array."""
         self._ensure_mesh()
-        return self.min_dists[self.mapping].reshape(self.mesh_shape)
+        return self._min_dists[self._mapping].reshape(self.mesh_shape)
 
     def percolation_radii(self, backend: str = "auto"):
         """
@@ -336,7 +341,7 @@ class Grid:
             labels = model.symmetry_labels(host)
             reduction = self._reduction(labels)
             ir, _, min_dists = reduction
-            points = self.mesh_cart[ir][min_dists > self.r_min]
+            points = self._mesh_cart[ir][min_dists > self.r_min]
             energies = model(points, host)
             info = model.describe(host)
         else:

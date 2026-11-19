@@ -37,6 +37,14 @@ def test_specie_accepts_symbol_and_number():
     assert Grid(nacl(), "Na").specie == Grid(nacl(), 11).specie == 11
 
 
+def test_public_attributes():
+    g = Grid(nacl(), "Na", resolution=0.5)
+    assert g.mesh_shape == (12, 12, 12)          # builds the mesh on first access
+    assert g.min_distances.shape == g.mesh_shape
+    for internal in ("ir_grid_points", "mapping", "min_dists", "mesh_frac", "mesh_cart", "generate_mesh"):
+        assert not hasattr(g, internal), internal
+
+
 def test_points_and_configurations_are_aligned(al_grid):
     pts = al_grid.points
     cfgs = al_grid.prepare_configurations()

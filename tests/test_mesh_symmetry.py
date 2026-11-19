@@ -14,8 +14,8 @@ from structures import SYMMETRY_CASES, nacl, pseudo_tetragonal
 def _symmetrized_vs_exact(atoms, resolution, symprec):
     g = Grid(atoms, specie=3, resolution=resolution, r_cut=6.0, r_min=0.0,
              symprec=symprec, empty_framework=False, verbose=False)
-    g.generate_mesh()
-    exact, _ = nn_list(g.base.positions, g.mesh_cart, 6.0, g.cell)
+    g._generate_mesh()
+    exact, _ = nn_list(g.base.positions, g._mesh_cart, 6.0, g.cell)
     return g, np.abs(g.min_distances.ravel() - exact).max()
 
 
@@ -32,7 +32,7 @@ def test_irreducible_mesh_is_exact(name, resolution):
         (atoms.cell[:], atoms.get_scaled_positions(), atoms.numbers), symprec=1e-3).rotations)
     assert len(g._mesh.rotations) == nops
     # real compression: at least ~nops/4 reduction (special positions make some orbits smaller)
-    assert len(g.ir_grid_points) * nops / 4 <= g.mesh_frac.shape[0]
+    assert len(g._ir_grid_points) * nops / 4 <= g._mesh_frac.shape[0]
 
 
 @pytest.mark.parametrize("name", SYMMETRY_CASES)
@@ -108,5 +108,5 @@ def test_bvse_charge_ordered_matches_no_symmetry():
     a, b = sym.evaluate(model), nosym.evaluate(model)
 
     assert sym.mesh_shape == nosym.mesh_shape
-    assert len(sym.ir_grid_points) < len(nosym.ir_grid_points)
+    assert len(sym._ir_grid_points) < len(nosym._ir_grid_points)
     np.testing.assert_allclose(a.values, b.values, rtol=0, atol=1e-10)

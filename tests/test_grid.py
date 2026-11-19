@@ -10,16 +10,16 @@ from structures import nacl
 @pytest.fixture
 def blocked_grid():
     g = Grid(nacl(), specie=11, resolution=0.3, r_cut=5.0, r_min=1.5, verbose=False)
-    g.generate_mesh()
-    accessible = g.min_dists > g.r_min
+    g._generate_mesh()
+    accessible = g._min_dists > g.r_min
     assert (~accessible).any()
-    g.emap = g.load_energies(-g.min_dists[accessible])
+    g.emap = g.load_energies(-g._min_dists[accessible])
     return g
 
 
 def test_blocked_points_are_inf(blocked_grid):
     g = blocked_grid
-    blocked = (g.min_dists <= g.r_min)[g.mapping].reshape(g.mesh_shape)
+    blocked = (g._min_dists <= g.r_min)[g._mapping].reshape(g.mesh_shape)
     v = g.emap.values
     assert np.isinf(v[blocked]).all()
     assert np.isfinite(v[~blocked]).all()
@@ -35,8 +35,8 @@ def test_percolation_with_blocked_points(blocked_grid):
 
 def test_nan_energy_becomes_blocked():
     g = Grid(nacl(), specie=11, resolution=0.3, r_cut=5.0, r_min=1.5, verbose=False)
-    g.generate_mesh()
-    e = -g.min_dists[g.min_dists > g.r_min]
+    g._generate_mesh()
+    e = -g._min_dists[g._min_dists > g.r_min]
     e[0] = np.nan
     assert not np.isnan(g.load_energies(e).values).any()
 
