@@ -86,7 +86,7 @@ def test_gnn_lib_predictor_batches_in_order(fake_gnn_lib, tmp_path):
     assert SEEN == {"r_cut": 6.0, "n_max_neighbors": 12}
 
     emap = grid.evaluate(pred)
-    np.testing.assert_allclose(emap.values, grid.load_energies(_expected(cfgs)).values, rtol=1e-5)
+    np.testing.assert_allclose(emap.values, grid.load(_expected(cfgs)).values, rtol=1e-5)
     assert emap.info["model"].startswith("gnn_lib") and emap.info["r_cut"] == 6.0
 
 

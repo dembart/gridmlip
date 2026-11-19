@@ -13,7 +13,7 @@ def blocked_grid():
     g._generate_mesh()
     accessible = g._min_dists > g.r_min
     assert (~accessible).any()
-    g.emap = g.load_energies(-g._min_dists[accessible])
+    g.emap = g.load(-g._min_dists[accessible])
     return g
 
 
@@ -38,12 +38,12 @@ def test_nan_energy_becomes_blocked():
     g._generate_mesh()
     e = -g._min_dists[g._min_dists > g.r_min]
     e[0] = np.nan
-    assert not np.isnan(g.load_energies(e).values).any()
+    assert not np.isnan(g.load(e).values).any()
 
 
-def test_load_energies_checks_length(blocked_grid):
+def test_load_checks_length(blocked_grid):
     with pytest.raises(ValueError, match="Expected"):
-        blocked_grid.load_energies(np.zeros(3))
+        blocked_grid.load(np.zeros(3))
 
 
 def test_configurations_match_energies(blocked_grid):

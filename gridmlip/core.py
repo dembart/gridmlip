@@ -352,14 +352,15 @@ class Grid:
             info = dict(getattr(predictor, "info", {}) or {"model": repr(model)})
         return self._energy_map(energies, reduction, info)
 
-    def load_energies(self, energies, file_format: str | None = None):
+    def load(self, energies, file_format: str | None = None):
         """
         Energies computed elsewhere for ``prepare_configurations()`` (same order).
 
         Parameters
         ----------
-        energies: array-like or str
-            energies (eV) or a file with processed configurations (.cfg, .xyz, ...)
+        energies: array-like, str or Path
+            a list/array of energies (eV), or a file with the processed configurations
+            (.cfg of MLIP 2.0, or any format ASE reads with energies, e.g. .xyz)
 
         file_format: str, optional
             'cfg' to force the MLIP 2.0 reader; otherwise inferred from the extension

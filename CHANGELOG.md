@@ -6,7 +6,7 @@
 - `Grid.evaluate(model)` returns an `EnergyMap`. `model` can be an ASE calculator (MACE and SevenNet calculators are batched automatically), a predictor, any callable `list[Atoms] -> energies`, or a point model such as `BVSE`.
 - `EnergyMap`: `percolation_barriers()`, `local_minima()`, `write(".grd"/".cube")`, `save()`/`load()` (`.npz`), `values`, `info` (model, settings, charges used).
 - `Grid.points`, `len(grid)`, `Grid.prepare_configurations(supercell_cutoff=...)` (each configuration carries `info["grid_index"]`), `Grid.min_distances`, `Grid.summary()`.
-- `Grid.load_energies(array | file)` returns an `EnergyMap`.
+- `Grid.load(energies | file)` returns an `EnergyMap`: a list/array of energies, or processed configurations (.cfg, .xyz, ...).
 - `gridmlip.predictors.mace(model, head=, device=, dtype="float32", batch_size="auto")`: `model` is a path, a `mace_mp` name or a torch model. Multi-head models require `head=`.
 - `gridmlip.predictors.sevennet(model, modal=...)`: not covered by tests yet.
 - `gridmlip.predictors.gnn_lib(model, r_cut=5.0, n_max_neighbors=None)`: gnn_lib models such as CGCNN, batched; tested against a stand-in of the gnn_lib interface only.
@@ -30,7 +30,7 @@
 - `prepare_configurations(config_format="pymatgen")` now places the ion at Cartesian coordinates. Before, Cartesian values were passed as fractional ones.
 
 ### Removed
-- `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`, `min_distances_data`; `DefectGenerator`; the `gridmlip.integrations` package (`bvse.bvse_distribution`, `mace/sevennet.evaluate_atoms_list`, `gnn_lib.evaluate_atoms_list_cgcnn`). Use the new API (see the README migration table).
+- `Grid.load_energies` (renamed to `Grid.load`), `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`, `min_distances_data`; `DefectGenerator`; the `gridmlip.integrations` package (`bvse.bvse_distribution`, `mace/sevennet.evaluate_atoms_list`, `gnn_lib.evaluate_atoms_list_cgcnn`). Replacements: `Grid.prepare_configurations`, `Grid.load`, `EnergyMap.percolation_barriers`, `EnergyMap.write`, `gridmlip.defects.*`, `gridmlip.bvse`, `gridmlip.predictors.*`.
 - `gridmlip.dataset.generate_defects_dataset` (the 0.2.7 pipeline). Use `build_dataset` / `gridmlip dataset`, which run the same steps with a YAML config.
 
 ## 0.3.0: correctness fixes (included in 0.3.0)
@@ -40,7 +40,7 @@
 - Oxidation states (`atoms.arrays["oxi_states"]`) are now included in symmetry detection, so charge ordering (e.g. Fe²⁺/Fe³⁺) is no longer averaged out.
 - The numba and scipy percolation backends now return identical, exact thresholds. Previously scipy bisected to 0.01 eV and returned the upper bound.
 - Blocked points (`min_dist <= r_min`) and NaN predictions are stored as `+inf`. Previously they became 1.8e308. Volumetric files (`.grd`, `.cube`) replace them with the largest finite value.
-- `load_energies` checks that the number of energies matches the number of points.
+- `Grid.load` checks that the number of energies matches the number of points.
 - `percolation_radii()` and `min_distances_data` build the mesh if it doesn't exist yet. `percolation_barriers()` without loaded energies raises a clear error.
 - MACE integration: progress bars were shown when `verbose=False` and hidden when `verbose=True`.
 - Install hints now point to `gridmlip[fast]` and `gridmlip[dataset]`.

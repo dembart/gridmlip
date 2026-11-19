@@ -1,4 +1,4 @@
-"""The v0.3 public API: Grid -> evaluate / load_energies -> EnergyMap."""
+"""The v0.3 public API: Grid -> evaluate / load -> EnergyMap."""
 import numpy as np
 import pytest
 from ase.build import bulk
@@ -61,9 +61,9 @@ def test_supercell_cutoff(al_grid):
     assert len(large) > len(small)
 
 
-def test_evaluate_callable_equals_load_energies(al_grid):
+def test_evaluate_callable_equals_load(al_grid):
     a = al_grid.evaluate(probe_distance_energy)
-    b = al_grid.load_energies(probe_distance_energy(al_grid.prepare_configurations()))
+    b = al_grid.load(probe_distance_energy(al_grid.prepare_configurations()))
     np.testing.assert_array_equal(a.values, b.values)
     assert isinstance(a, EnergyMap) and a.values.shape == al_grid.mesh_shape
 
@@ -75,7 +75,7 @@ def test_evaluate_ase_calculator(al_grid):
     for c in al_grid.prepare_configurations():
         c.calc = EMT()
         by_hand.append(c.get_potential_energy())
-    np.testing.assert_allclose(emap.values, al_grid.load_energies(by_hand).values)
+    np.testing.assert_allclose(emap.values, al_grid.load(by_hand).values)
     assert "EMT" in emap.info["model"]
     assert np.isfinite(emap.percolation_barriers()["e3d"])
 
@@ -100,14 +100,14 @@ def test_evaluate_rejects_non_models(al_grid):
         al_grid.evaluate(42)
 
 
-def test_load_energies_from_file(al_grid, tmp_path):
+def test_load_from_file(al_grid, tmp_path):
     cfgs = al_grid.prepare_configurations()
     energies = probe_distance_energy(cfgs)
     for c, e in zip(cfgs, energies):
         c.calc = SinglePointCalculator(c, energy=e)
     write(tmp_path / "processed.xyz", cfgs)
-    emap = al_grid.load_energies(tmp_path / "processed.xyz")
-    np.testing.assert_allclose(emap.values, al_grid.load_energies(energies).values)
+    emap = al_grid.load(tmp_path / "processed.xyz")
+    np.testing.assert_allclose(emap.values, al_grid.load(energies).values)
     assert emap.info["source"].endswith("processed.xyz")
 
 

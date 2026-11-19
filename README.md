@@ -71,7 +71,7 @@ grid.prepare_configurations(supercell_cutoff=5.0, filename="cfgs.cfg")
 ```
 
 ```python
-emap = grid.load_energies("processed.cfg")
+emap = grid.load("processed.cfg")
 emap.percolation_barriers()
 ```
 
@@ -113,8 +113,8 @@ grid.percolation_radii()
 ```python
 from gridmlip.defects import interstitials, vacancies, frenkel_pairs
 
-p = dict(resolution=0.25, r_min=1.3, r_cut=7.5)
-cfgs = interstitials(atoms, 3, **p) + vacancies(atoms, 3, **p) + frenkel_pairs(atoms, 3, **p)
+params = dict(resolution=0.25, r_min=1.3, r_cut=7.5)
+cfgs = interstitials(atoms, 3, **params) + vacancies(atoms, 3, **params) + frenkel_pairs(atoms, 3, **params)
 ```
 
 ## Training datasets

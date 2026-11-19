@@ -13,7 +13,7 @@ __author__ = "Artem Dembitskiy"
 class EnergyMap:
     """
     Energies of a mobile ion on a periodic mesh, as returned by
-    ``Grid.evaluate()`` and ``Grid.load_energies()``.
+    ``Grid.evaluate()`` and ``Grid.load()``.
 
     Point (i, j, k) of ``values`` sits at fractional coordinates (i/nx, j/ny, k/nz).
     Blocked points (closer than ``r_min`` to the host) are ``+inf``.
