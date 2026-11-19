@@ -157,7 +157,7 @@ def _key_ints(data: bytes):
 
 
 def material_key(material_id):
-    """4 integers from blake2b(str(material_id)); same as gridmlip <= 0.2.7."""
+    """4 integers from blake2b(str(material_id))."""
     return _key_ints(str(material_id).encode("utf-8"))
 
 
@@ -178,8 +178,7 @@ def rattle_rng(atoms, seed=0, key=None, copy=0):
     The stream is SeedSequence(entropy=seed, spawn_key=(material key, configuration key[, copy])):
     - material key: from atoms.info['material_id'] (empty if absent)
     - configuration key: the structure's content (key=None), or an explicit int / tuple of ints;
-      key=j with copy=0 gives the same random stream as gridmlip <= 0.2.7 for configuration j
-      (j = index in the FPS selection)
+      such as key=j, the index in the FPS selection
 
     Returns
     -------

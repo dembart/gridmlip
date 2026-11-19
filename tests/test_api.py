@@ -189,6 +189,17 @@ def test_bvse_charge_ordering_resolved_inside_evaluate(need_ions):
     np.testing.assert_allclose(a.values, b.values, rtol=0, atol=1e-10)
 
 
+def test_bvse_missing_parameters_give_clear_error(need_ions):
+    atoms = nacl()
+    with pytest.raises(ValueError, match="No BVSE parameters for Na\\+ with some of \\['Cl-3'\\]"):
+        gm.bvse(atoms, "Na+", resolution=0.3, oxidation_states={"Na": 1, "Cl": -3}, verbose=False)
+
+
+def test_bvse_forbidden_species():
+    from gridmlip.models.bvse import _FORBIDDEN_SPECIES
+    assert {"O-", "P3-", "S-"} <= set(_FORBIDDEN_SPECIES)
+
+
 def test_bvse_oxidation_states_dict(need_ions):
     emap = gm.bvse(nacl(), "Na+", resolution=0.3, oxidation_states={"Na": 1, "Cl": -1})
     assert emap.info["oxidation_states_source"].startswith("user")

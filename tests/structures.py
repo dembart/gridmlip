@@ -1,7 +1,4 @@
-"""Test structures built in code (no data files needed).
-
-Also imported by make_reference.py, so it must not import gridmlip.
-"""
+"""Test structures built in code (no data files needed)."""
 import numpy as np
 from ase import Atoms
 from ase.spacegroup import crystal

@@ -65,3 +65,5 @@ version = { attr = "gridmlip._version.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not umlip'"
+markers = ["umlip: tests that run universal MLIPs (slow); select with -m umlip"]

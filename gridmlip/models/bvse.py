@@ -10,8 +10,8 @@ from .base import PointModel
 
 __author__ = "Artem Dembitskiy"
 
-# same settings as bvlain
-_FORBIDDEN_SPECIES = ["O-", "P3-"]
+# bvlain settings, plus S- (no BVSE parameters for S-1)
+_FORBIDDEN_SPECIES = ["O-", "P3-", "S-"]
 
 # oxidation states that are common enough not to warn about
 _UNUSUAL = {"P": {3, 4}, "O": {-1}}
@@ -28,7 +28,7 @@ def parse_ion(ion):
 
 def assign_oxidation_states(atoms, forbidden_species=_FORBIDDEN_SPECIES):
     """
-    Oxidation states from pymatgen's BVAnalyzer (same settings as bvlain).
+    Oxidation states from pymatgen's BVAnalyzer (bvlain settings; O-, P3- and S- forbidden).
 
     Returns
     -------
@@ -153,7 +153,15 @@ class BVSE(PointModel):
         atoms = atoms.copy()
         atoms.set_array("oxi_states", self.resolve_oxidation_states(atoms))
         host = atoms[host_mask]
-        return assign_bvse_params(host, self.symbol, self.charge, self_interaction=True)
+        try:
+            return assign_bvse_params(host, self.symbol, self.charge, self_interaction=True)
+        except KeyError:
+            ions = sorted({f"{s}{int(q):+d}" for s, q in zip(host.get_chemical_symbols(), host.get_array("oxi_states"))
+                           if q * self.charge < 0})
+            raise ValueError(
+                f"No BVSE parameters for {self.ion} with some of {ions}. Check the oxidation states "
+                "(e.g. BVSE(oxidation_states={'P': 5, 'S': -2, ...}) or atoms.arrays['oxi_states'])."
+            ) from None
 
     def symmetry_labels(self, host):
         pairs = np.stack([host.numbers, host.get_array("oxi_states")], axis=1)

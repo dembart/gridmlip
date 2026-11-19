@@ -67,22 +67,6 @@ def test_rattle_streams_differ_by_seed_copy_and_material(cfgs):
     assert not np.allclose(ref, rattle(other, seed=42).positions)
 
 
-def test_rattle_key_reproduces_gridmlip_027(cfgs):
-    """key=j reproduces the 0.2.7 pipeline: _make_rng(master_seed, material_id, j) + rattle_atoms."""
-    import hashlib
-
-    def _make_rng(master_seed, material_id, config_id):  # verbatim from gridmlip 0.2.7 dataset.py
-        digest = hashlib.blake2b(str(material_id).encode("utf-8"), digest_size=16).digest()
-        material_key = tuple(int.from_bytes(digest[i:i + 4], "little") for i in range(0, 16, 4))
-        seed = np.random.SeedSequence(entropy=master_seed, spawn_key=material_key + (int(config_id),))
-        return np.random.default_rng(seed)
-    from gridmlip.dataset.rattle import rattle_atoms
-
-    c = cfgs[5]
-    old = rattle_atoms(c, rng=_make_rng(42, "lfp", 5), d_min=1.0)
-    _same([rattle(c, seed=42, key=5)], [old])
-
-
 def test_rattle_tolerates_input_below_d_min():
     """An ion placed at r_min < d_min used to make every attempt fail (no position noise at all)."""
     atoms = lifepo4()
@@ -113,16 +97,6 @@ def test_soap_and_select_edge_cases(cfgs):
     assert len(select_fps(np.empty((0, 5)))) == 0
     assert list(select_fps(X[:2])) == [0, 1]
     assert len(select_fps(X, max_samples=100)) <= 4
-
-
-def test_select_fps_matches_027_pipeline(cfgs):
-    from sklearn.decomposition import PCA
-    from gridmlip.dataset.selection import fps_with_stop
-
-    X = soap_features(cfgs)
-    old = fps_with_stop(PCA(n_components=0.95, svd_solver="full").fit_transform(X),
-                        rel_tol=1e-5, start_idx="centroid", max_samples=min(20, len(X)))
-    np.testing.assert_array_equal(select_fps(X, max_samples=20), old)
 
 
 # ------------------------------------------------------------ defect labels

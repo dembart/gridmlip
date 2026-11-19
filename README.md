@@ -2,208 +2,152 @@
 <p align="left">
 <a href="https://github.com/dembart/gridmlip/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-darkred"></a>
 
+**gridmlip** samples the energy landscape of a mobile ion in a crystal on a symmetry-reduced grid,
+using machine learning interatomic potentials (MLIPs) or bond valence site energies, and finds
+percolation barriers. It also generates defect configurations and training sets for MLIPs.
+
+> The library is under development; the API may change.
 
 ## Contents
-- [About](#about)
 - [Installation](#installation)
-- [How to use](#how-to-use)
+- [Percolation barriers with a batched MLIP](#percolation-barriers-with-a-batched-mlip)
+- [ASE calculators](#ase-calculators)
+- [External calculations (MTP, DFT, cluster jobs)](#external-calculations-mtp-dft-cluster-jobs)
+- [Bond valence site energy](#bond-valence-site-energy)
+- [Forces, stress and descriptors](#forces-stress-and-descriptors)
+- [Saving and visualization](#saving-and-visualization)
+- [Local minima and percolation radii](#local-minima-and-percolation-radii)
+- [Defect configurations](#defect-configurations)
+- [Training datasets](#training-datasets)
 - [Notebooks](#notebooks)
 - [How to cite](#how-to-cite)
 
-
-## About
-
-**gridmlip** is a library for the symmetry-aware grid-based sampling of the energy landscape of mobile species in solids using machine learning interatomic potentials (MLIPs).
-
-> (!) Note: The API and functionality may change. Errors are expected. The library is under development.
-
 ## Installation
 
-```
-pip install gridmlip
-```
-or
-
-```python
-git clone https://github.com/dembart/gridmlip
-cd gridmlip
-pip install .
+```bash
+pip install "gridmlip[fast]"
 ```
 
-## How to use
+Optional extras: `mace`, `sevenn`, `gnn_lib`, `bvse`, `dataset`, e.g. `pip install "gridmlip[fast,mace]"`.
 
-Two objects: a `Grid` says **where** to put the mobile ion; evaluating a model on it gives an `EnergyMap`.
-
-### Percolation barriers with a universal MLIP
+## Percolation barriers with a batched MLIP
 
 ```python
 from ase.io import read
-from mace.calculators import mace_mp
 import gridmlip as gm
+from gridmlip.predictors import mace
 
 atoms = read("Li10Ge(PS6)2_mp.cif")
 grid = gm.Grid(atoms, specie="Li", resolution=0.2, r_min=0.8)
 
-emap = grid.evaluate(mace_mp(model="medium"))   # MACE / SevenNet calculators are batched automatically
-emap.percolation_barriers()                     # {'e1d': ..., 'e2d': ..., 'e3d': ...}
-emap.write("li.grd")                            # VESTA volumetric file (.grd or .cube)
-emap.save("li.npz")                             # reload with gm.EnergyMap.load("li.npz")
+emap = grid.evaluate(mace("medium-mpa-0", device="cuda"))
+emap.percolation_barriers()
 ```
 
-Batched predictors with explicit settings:
+Other batched predictors:
 
 ```python
-from gridmlip.predictors import mace, sevennet, gnn_lib
+from gridmlip.predictors import sevennet, gnn_lib
 
-emap = grid.evaluate(mace("medium-mpa-0", device="cuda"))          # name or path; float32 by default
-emap = grid.evaluate(mace("my_finetune.model", head="pbe"))        # multi-head models need head=
 emap = grid.evaluate(sevennet("7net-mf-ompa", modal="mpa"))
-emap = grid.evaluate(gnn_lib("cgcnn.pth", r_cut=5.0))                # gnn_lib models, e.g. CGCNN
-emap = grid.evaluate(my_function)                                  # any callable list[Atoms] -> energies
+emap = grid.evaluate(gnn_lib("cgcnn.pth", r_cut=5.0))
+emap = grid.evaluate(my_function)  # any callable: list[Atoms] -> energies
 ```
 
-Forces, stress and per-atom descriptors come from the same batched pass:
+## ASE calculators
+
+MACE and SevenNet calculators are batched automatically; other calculators run one structure at a time.
+
+```python
+from mace.calculators import mace_mp
+
+emap = grid.evaluate(mace_mp(model="medium"))
+```
+
+## External calculations (MTP, DFT, cluster jobs)
+
+```python
+grid.prepare_configurations(supercell_cutoff=5.0, filename="cfgs.cfg")
+```
+
+```python
+emap = grid.load_energies("processed.cfg")
+emap.percolation_barriers()
+```
+
+## Bond valence site energy
+
+```python
+emap = gm.bvse(atoms, "Li+", resolution=0.2)
+emap.percolation_barriers()
+```
+
+Oxidation states are taken from `atoms.arrays["oxi_states"]` or assigned with pymatgen's BVAnalyzer.
+
+## Forces, stress and descriptors
 
 ```python
 pred = mace("medium-mpa-0", device="cuda")
-cfgs = grid.prepare_configurations()
-out = pred.predict(cfgs, ("energy", "forces", "stress", "descriptors"))
-out["energy"]        # (n,) eV
-out["forces"]        # list of (n_atoms, 3) arrays, eV/A
-out["stress"]        # (n, 6) Voigt xx yy zz yz xz xy, eV/A^3 (ASE convention)
-out["descriptors"]   # list of (n_atoms, n_features) arrays
+out = pred.predict(grid.prepare_configurations(), ("energy", "forces", "stress", "descriptors"))
 ```
 
-`mace`, `sevennet` and `gnn_lib` predictors support all four (computed in batches); any ASE calculator
-supports energy, forces and stress (one structure at a time).
-
-### Calculations run elsewhere (MTP, DFT, cluster jobs)
+## Saving and visualization
 
 ```python
-cfgs = grid.prepare_configurations(supercell_cutoff=5.0, filename="cfgs.cfg")
-# ... compute the energies ...
-emap = grid.load_energies("processed.cfg")      # or an array of energies in the same order
-emap.percolation_barriers()
+emap.write("li.grd")
+emap.save("li.npz")
+emap = gm.EnergyMap.load("li.npz")
 ```
 
-### Bond valence site energy
+`.grd` and `.cube` files open in VESTA.
+
+## Local minima and percolation radii
 
 ```python
-emap = gm.bvse(atoms, "Na+", resolution=0.2)
-emap.percolation_barriers()
-emap.info["oxidation_states"]                   # charges used
+emap.local_minima(min_distance=2.0, energy_window=0.5)
+grid.percolation_radii()
 ```
 
-Oxidation states are taken from `atoms.arrays["oxi_states"]` if present, otherwise assigned with
-pymatgen's BVAnalyzer (as in bvlain) and printed. The same model on an explicit grid:
-
-```python
-emap = gm.Grid(atoms, "Na", resolution=0.2, empty_framework=False).evaluate(gm.BVSE("Na+"))
-```
-
-### Local minima and void space
-
-```python
-emap.local_minima(min_distance=2.0, energy_window=0.5)   # [(position, energy, n_points), ...]
-grid.percolation_radii()                                 # largest percolating free sphere
-grid.min_distances                                       # distance to the host, 3D array
-```
-
-### Defect configurations for MLIP training
+## Defect configurations
 
 ```python
 from gridmlip.defects import interstitials, vacancies, frenkel_pairs
 
-params = dict(resolution=0.25, r_min=1.3, r_cut=7.5)
-cfgs = interstitials(atoms, 3, **params)
-cfgs += vacancies(atoms, 3, upper_bound=6.0, **params)
-cfgs += frenkel_pairs(atoms, 3, **params)
+p = dict(resolution=0.25, r_min=1.3, r_cut=7.5)
+cfgs = interstitials(atoms, 3, **p) + vacancies(atoms, 3, **p) + frenkel_pairs(atoms, 3, **p)
 ```
 
-Each configuration has `atoms.info["defect"]` set to `"interstitial"`, `"vacancy"` or `"frenkel_pair"`.
+## Training datasets
 
-### Training sets: defects, selection, perturbation
-
-From the shell (one `.xyz` per material, plus `config.yaml` and `summary.csv`):
+Defects → SOAP → farthest point sampling → reproducible rattling, one `.xyz` per material.
 
 ```bash
-gridmlip dataset --print-config > dataset.yaml      # all settings with defaults; set specie, seed, ...
-gridmlip dataset structures.xyz --config dataset.yaml --output dataset/
-gridmlip dataset structures.xyz --config dataset.yaml --dry-run      # candidate counts only
+gridmlip dataset --print-config > dataset.yaml
+gridmlip dataset structures.xyz --config dataset.yaml --output datasets/li --dry-run
+gridmlip dataset structures.xyz --config dataset.yaml --output datasets/li
 ```
-
-Reruns skip finished materials. On a cluster, split the work with a job array; the result does not depend on the split:
-
-```bash
-#SBATCH --array=0-31
-gridmlip dataset structures.xyz --config dataset.yaml --output dataset/ --chunk ${SLURM_ARRAY_TASK_ID}/32
-```
-
-The same in one Python call (it is exactly what the command runs):
 
 ```python
 from gridmlip.dataset import build_dataset
 
-summary = build_dataset("structures.xyz", config="dataset.yaml", output_dir="datasets/li")
+build_dataset("structures.xyz", config="dataset.yaml", output_dir="datasets/li")
 ```
 
-Before any work starts, settings and structures are checked: unknown or out-of-range settings,
-duplicate `material_id`s, structures without the mobile ion, and an output folder that already holds a
-dataset made with different settings are all errors (pass `overwrite=True` / `--overwrite` to recompute
-with new settings).
+On a cluster:
 
-The recipe written out with the public functions (identical files for the same settings):
-
-```python
-from pathlib import Path
-from ase.io import write
-from gridmlip.defects import interstitials, vacancies, frenkel_pairs
-from gridmlip.dataset import soap_features, select_fps, rattle, save_settings
-
-seed, out = 42, Path("dataset"); out.mkdir(exist_ok=True)
-p = dict(resolution=0.25, r_min=1.5, r_cut=5.0, symprec=0.1)
-save_settings(out / "config.yaml", seed=seed, specie=3, defects=p)   # + library versions
-
-for atoms in atoms_list:                                  # atoms.info["material_id"] names the files
-    mid = atoms.info["material_id"]
-    cfgs = (interstitials(atoms, 3, **p)
-            + vacancies(atoms, 3, max_sep_dist="auto", upper_bound=6.0, **p)
-            + frenkel_pairs(atoms, 3, max_sep_dist="auto", upper_bound=6.0, **p))
-    X = soap_features(cfgs, center=-1, r_cut=6.0, n_max=3, l_max=2, sigma=0.3)
-    idx = select_fps(X, pca=0.95, max_samples=500, rel_tol=1e-5)
-    train = [rattle(cfgs[j], seed=seed, pos_std=0.05, strain_std=0.02, d_min=1.0) for j in idx]
-    write(out / f"dataset_{mid}.xyz", train)
+```bash
+#SBATCH --array=0-31
+gridmlip dataset structures.xyz --config dataset.yaml --output datasets/li --chunk ${SLURM_ARRAY_TASK_ID}/32
 ```
-
-`rattle` is the only random step. Its random stream is derived from the seed, `material_id` and the
-configuration itself, so the same structure always gets the same perturbation, regardless of the order
-of structures, the split into chunks, or the generation settings. Every output records
-`rattle_seed`, `rattle_key` and `rattle_copy`. `rattle(cfg, seed=42, key=j)` uses the same random stream as 0.2 for configuration `j`.
-
-### Migrating from 0.2
-
-| 0.2 | 0.3 |
-|---|---|
-| `grid.construct_cfgs()` | `grid.prepare_configurations()` |
-| `grid.load_energies(e); grid.percolation_barriers()` | `grid.load_energies(e).percolation_barriers()` |
-| `grid.read_processed_cfgs(f)` | `grid.load_energies(f)` |
-| `grid.write_grd("x")` | `emap.write("x.grd")` |
-| `bvse_distribution(atoms, "Li+")` | `gm.bvse(atoms, "Li+")` |
-| `integrations.mace.evaluate_atoms_list(...)` | `grid.evaluate(predictors.mace(...))` |
-| `DefectGenerator(...).generate_dataset("int")` | `defects.interstitials(...)` |
-| `dataset.generate_defects_dataset(...)` | `dataset.build_dataset(structures, config="dataset.yaml")` or `gridmlip dataset` |
-| `integrations.gnn_lib.evaluate_atoms_list_cgcnn(...)` | `grid.evaluate(predictors.gnn_lib(...))` |
-
-The 0.2 names were removed in 0.3.
-
 
 ## Notebooks
 
+- [Percolation barriers with a batched MLIP](notebooks/01_mlip_barriers.ipynb)
+- [Bond valence site energy](notebooks/02_bvse.ipynb)
+- [Training dataset for an MLIP](notebooks/03_dataset.ipynb)
 
-- [Using SevenNet for calculating percolation barriers](notebooks/integrations.ipynb)    
-- [Using moment tensor potentials (as implemented in MLIP 2.0) for calculating percolation barriers](notebooks/mtp.ipynb)
+Upgrading from 0.2: see [CHANGELOG.md](CHANGELOG.md).
 
+## How to cite
 
-### How to cite
-If you use the gridmlip library, please, consider citing this repository.
-
+If you use the gridmlip library, please consider citing this repository.

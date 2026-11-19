@@ -8,6 +8,8 @@ import os
 import numpy as np
 import pytest
 
+pytestmark = pytest.mark.umlip  # slow: run with `pytest -m umlip`
+
 mace_calculators = pytest.importorskip("mace.calculators")
 
 import gridmlip as gm  # noqa: E402
