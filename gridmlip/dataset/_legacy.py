@@ -1,6 +1,11 @@
 """
-The 0.2.7 dataset pipeline, kept unchanged to reproduce datasets generated with it.
-For new datasets use the `gridmlip dataset` command or the building blocks in gridmlip.dataset.
+The 0.2.7 dataset pipeline: same steps and settings as in 0.2.7
+(defects -> SOAP -> PCA -> FPS -> rattle with per-(material, configuration) random streams).
+
+Results are not bit-identical to 0.2.7: candidates come from the corrected periodic mesh,
+parent labels are not copied into configurations, and rattling no longer skips position noise
+when the input already has a pair closer than d_min.
+For new datasets you can also use the `gridmlip dataset` command or the building blocks in gridmlip.dataset.
 """
 import hashlib
 from pathlib import Path

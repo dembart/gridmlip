@@ -15,7 +15,7 @@
 - Predictors: `pred.predict(atoms_list, properties)` returns any of `energy`, `forces`, `stress` (Voigt, eV/Å³, ASE convention) and per-atom `descriptors`, computed in the same batched pass for `mace`, `sevennet` and `gnn_lib`. MACE results are tested against `MACECalculator` (energy, forces, stress, `get_descriptors`). `pred(atoms_list)` still returns energies only.
 - `specie` accepts symbols ("Li") as well as atomic numbers.
 
-- Dataset building blocks in `gridmlip.dataset`: `soap_features`, `select_fps` (PCA + FPS, same selection as 0.2.7), `rattle` (reproducible perturbation keyed by seed, `material_id` and the configuration's content; `key=j` reproduces 0.2.7), `save_settings`/`load_settings` (settings + library versions).
+- Dataset building blocks in `gridmlip.dataset`: `soap_features`, `select_fps` (PCA + FPS, same selection as 0.2.7), `rattle` (reproducible perturbation keyed by seed, `material_id` and the configuration's content; `key=j` uses the 0.2.7 random stream for configuration `j`), `save_settings`/`load_settings` (settings + library versions).
 - `gridmlip dataset` command: YAML config (`--print-config`), resume by default, `--dry-run`, `--chunk i/n` for job arrays, `summary.csv`. Results do not depend on structure order or the chunk split.
 
 ### Fixed
@@ -30,7 +30,7 @@
 
 ### Removed
 - `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`, `min_distances_data`; `DefectGenerator`; the `gridmlip.integrations` package (`bvse.bvse_distribution`, `mace/sevennet.evaluate_atoms_list`, `gnn_lib.evaluate_atoms_list_cgcnn`). Use the new API (see the README migration table).
-- `gridmlip.dataset.generate_defects_dataset` (the 0.2.7 pipeline) is kept, without a deprecation warning, to reproduce existing datasets.
+- `gridmlip.dataset.generate_defects_dataset` (the 0.2.7 pipeline) is kept with the same logic and no deprecation warning. Its output is not bit-identical to 0.2.7: defect candidates come from the corrected mesh, and the label-leak and `d_min` fixes apply.
 
 ## 0.3.0: correctness fixes (included in 0.3.0)
 

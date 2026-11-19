@@ -165,7 +165,7 @@ for atoms in atoms_list:                                  # atoms.info["material
 `rattle` is the only random step. Its random stream is derived from the seed, `material_id` and the
 configuration itself, so the same structure always gets the same perturbation, regardless of the order
 of structures, the split into chunks, or the generation settings. Every output records
-`rattle_seed`, `rattle_key` and `rattle_copy`; `rattle(cfg, seed=42, key=j)` reproduces datasets made with 0.2.
+`rattle_seed`, `rattle_key` and `rattle_copy`. `rattle(cfg, seed=42, key=j)` uses the same random stream as 0.2 for configuration `j`.
 
 ### Migrating from 0.2
 
@@ -180,7 +180,7 @@ of structures, the split into chunks, or the generation settings. Every output r
 | `DefectGenerator(...).generate_dataset("int")` | `defects.interstitials(...)` |
 | `integrations.gnn_lib.evaluate_atoms_list_cgcnn(...)` | `grid.evaluate(predictors.gnn_lib(...))` |
 
-The 0.2 names were removed in 0.3. `gridmlip.dataset.generate_defects_dataset` is kept unchanged to reproduce datasets made with 0.2.
+The 0.2 names were removed in 0.3. `gridmlip.dataset.generate_defects_dataset` is kept with the same logic as in 0.2; its output is not bit-identical to 0.2 because the mesh and two dataset bugs were fixed.
 
 
 ## Notebooks
