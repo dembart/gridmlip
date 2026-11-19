@@ -83,7 +83,7 @@ def build_material(atoms, settings, dry_run=False):
     -------
     (configurations, summary row)
     """
-    from ..core import Grid
+    from ..grid import Grid
     from .features import soap_features
     from .rattle import rattle
     from .selection import select_fps

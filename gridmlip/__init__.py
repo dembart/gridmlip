@@ -9,7 +9,7 @@ if _util.find_spec("numba") is None:
         "which is 10-100x slower. For the fast numba backend: pip install 'gridmlip[fast]'",
         UserWarning, stacklevel=2,
     )
-from .core import Grid
+from .grid import Grid
 from .energy_map import EnergyMap
 from .models import BVSE, bvse
 from . import predictors

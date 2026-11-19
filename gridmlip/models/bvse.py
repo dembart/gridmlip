@@ -227,7 +227,7 @@ def bvse(
     -------
     EnergyMap
     """
-    from ..core import Grid
+    from ..grid import Grid
 
     model = BVSE(ion, cutoff=cutoff, k=k, f=f, oxidation_states=oxidation_states, verbose=verbose)
     atoms = atoms.copy()

@@ -4,7 +4,7 @@ from tqdm import tqdm
 from spglib import get_symmetry_dataset
 from ions import Percolator, Edge
 
-from .core import Grid, _strip_labels
+from .grid import Grid, _strip_labels
 from ._neighborhood import nn_list
 
 

@@ -93,12 +93,7 @@ def rattle_atoms(
     d_min: float = 1.4,
 ) -> Atoms:
     
-    try:
-        from vesin import ase_neighbor_list
-    except ImportError as exc:
-        raise ImportError(
-            "rattle_atoms requires vesin. Install with `pip install 'gridmlip[ml]'`."
-        ) from exc
+    from vesin import ase_neighbor_list
 
     rattled = atoms.copy()
     valid_positions_found = False

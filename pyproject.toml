@@ -27,6 +27,7 @@ dependencies = [
     "tqdm",
     "ions",
     "pymatgen",
+    "vesin",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +40,7 @@ fast = [
     "numba>=0.62,<0.69; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 # dataset generation: SOAP, PCA, farthest point sampling, rattling, YAML settings
-ml = ["dscribe>=2", "scikit-learn", "fpsample", "vesin", "pyyaml"]
+ml = ["dscribe>=2", "scikit-learn", "fpsample", "pyyaml"]
 test = ["pytest"]
 # MLIPs (mace-torch, sevenn, gnn_lib) are integrations: used if installed, not extras
 
