@@ -163,8 +163,6 @@ gridmlip dataset structures.xyz --config dataset.yaml --output datasets/li --chu
 - [Training dataset for an MLIP](notebooks/03_dataset.ipynb)
 - [Interactive view of energy maps](notebooks/04_view.ipynb)
 
-Upgrading from 0.2: see [CHANGELOG.md](CHANGELOG.md).
-
 ## How to cite
 
 If you use the gridmlip library, please consider citing this repository.
