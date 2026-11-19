@@ -31,7 +31,7 @@
 
 ### Removed
 - `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`, `min_distances_data`; `DefectGenerator`; the `gridmlip.integrations` package (`bvse.bvse_distribution`, `mace/sevennet.evaluate_atoms_list`, `gnn_lib.evaluate_atoms_list_cgcnn`). Use the new API (see the README migration table).
-- `gridmlip.dataset.generate_defects_dataset` (the 0.2.7 pipeline) is kept with the same logic and no deprecation warning. Its output is not bit-identical to 0.2.7: defect candidates come from the corrected mesh, and the label-leak and `d_min` fixes apply.
+- `gridmlip.dataset.generate_defects_dataset` (the 0.2.7 pipeline). Use `build_dataset` / `gridmlip dataset`, which run the same steps with a YAML config.
 
 ## 0.3.0: correctness fixes (included in 0.3.0)
 

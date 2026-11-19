@@ -191,9 +191,10 @@ of structures, the split into chunks, or the generation settings. Every output r
 | `bvse_distribution(atoms, "Li+")` | `gm.bvse(atoms, "Li+")` |
 | `integrations.mace.evaluate_atoms_list(...)` | `grid.evaluate(predictors.mace(...))` |
 | `DefectGenerator(...).generate_dataset("int")` | `defects.interstitials(...)` |
+| `dataset.generate_defects_dataset(...)` | `dataset.build_dataset(structures, config="dataset.yaml")` or `gridmlip dataset` |
 | `integrations.gnn_lib.evaluate_atoms_list_cgcnn(...)` | `grid.evaluate(predictors.gnn_lib(...))` |
 
-The 0.2 names were removed in 0.3. `gridmlip.dataset.generate_defects_dataset` is kept with the same logic as in 0.2; its output is not bit-identical to 0.2 because the mesh and two dataset bugs were fixed.
+The 0.2 names were removed in 0.3.
 
 
 ## Notebooks

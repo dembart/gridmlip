@@ -15,7 +15,6 @@ from .selection import select_fps
 from .rattle import rattle, rattle_rng
 from .settings import save_settings, load_settings, library_versions
 from .recipe import build_dataset
-from ._legacy import generate_defects_dataset
 
 __all__ = ["build_dataset", "soap_features", "select_fps", "rattle", "rattle_rng", "save_settings", "load_settings",
-           "library_versions", "generate_defects_dataset"]
+           "library_versions"]

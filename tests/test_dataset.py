@@ -69,7 +69,13 @@ def test_rattle_streams_differ_by_seed_copy_and_material(cfgs):
 
 def test_rattle_key_reproduces_gridmlip_027(cfgs):
     """key=j reproduces the 0.2.7 pipeline: _make_rng(master_seed, material_id, j) + rattle_atoms."""
-    from gridmlip.dataset._legacy import _make_rng
+    import hashlib
+
+    def _make_rng(master_seed, material_id, config_id):  # verbatim from gridmlip 0.2.7 dataset.py
+        digest = hashlib.blake2b(str(material_id).encode("utf-8"), digest_size=16).digest()
+        material_key = tuple(int.from_bytes(digest[i:i + 4], "little") for i in range(0, 16, 4))
+        seed = np.random.SeedSequence(entropy=master_seed, spawn_key=material_key + (int(config_id),))
+        return np.random.default_rng(seed)
     from gridmlip.dataset.rattle import rattle_atoms
 
     c = cfgs[5]
@@ -195,17 +201,6 @@ def test_cli_config_roundtrip_resume_and_dry_run(tmp_path):
 def test_settings_reject_typos():
     with pytest.raises(KeyError, match="pos_sdt"):
         merge_settings({"rattle": {"pos_sdt": 0.03}})
-
-
-def test_legacy_pipeline_runs_without_warnings(tmp_path):
-    from gridmlip.dataset import generate_defects_dataset
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
-        out = generate_defects_dataset([lifepo4()], output_dir=tmp_path, specie=3, resolution=0.6,
-                                       defect_type="int", max_samples=5)
-    assert len(out) == 1 and 0 < len(out[0]) <= 5
-    assert (tmp_path / "dataset_0.xyz").exists()
 
 
 # ------------------------------------------------------- guard rails
