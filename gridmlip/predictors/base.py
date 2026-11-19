@@ -110,7 +110,7 @@ def as_predictor(model):
     """
     Turn a model into a predictor: callable list[Atoms] -> np.ndarray of energies.
 
-    MACE and SevenNet ASE calculators are recognized and evaluated in batches;
+    MACE, SevenNet and gnn_lib ASE calculators are recognized and evaluated in batches;
     other ASE calculators are evaluated one structure at a time.
     """
     from ase.calculators.calculator import BaseCalculator
@@ -124,6 +124,9 @@ def as_predictor(model):
             if module.startswith("sevenn") and hasattr(model, "model"):
                 from .sevennet import SevenNetPredictor
                 return SevenNetPredictor.from_calculator(model)
+            if module.startswith("gnn_lib") and hasattr(model, "model") and hasattr(model, "config"):
+                from .gnn_lib import GNNLibPredictor
+                return GNNLibPredictor.from_calculator(model)
         except Exception as exc:  # internals of the library changed: stay correct, just slower
             warnings.warn(f"Batched evaluation of {type(model).__name__} failed to set up ({exc}); "
                           "falling back to one structure at a time.", UserWarning, stacklevel=3)
