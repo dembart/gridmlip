@@ -103,12 +103,17 @@ def rattle_atoms(
 
     rng = _get_rng(rng)
 
+    # If the unperturbed structure already has pairs closer than d_min (e.g. an ion placed at
+    # r_min < d_min), require only that no pair gets closer than the original closest pair.
+    _, _, d0 = ase_neighbor_list("ijd", atoms, cutoff=1.5 * d_min)
+    threshold = min(d_min, float(np.min(d0))) if len(d0) else d_min
+
     for _ in range(max_attempts):
         rattled_candidate = rattle_positions(atoms, std=pos_std, rng=rng)
-        
+
         i, j, d = ase_neighbor_list("ijd", rattled_candidate, cutoff=1.5 * d_min)
-        
-        if len(d) > 0 and np.min(d) < d_min:
+
+        if len(d) > 0 and np.min(d) < threshold:
             continue
             
         rattled = rattled_candidate
@@ -117,7 +122,7 @@ def rattle_atoms(
     
     if not valid_positions_found:
         warnings.warn(
-            f"Could not satisfy minimum distance cutoff {d_min} Å within {max_attempts} attempts. "
+            f"Could not satisfy minimum distance cutoff {threshold:.3f} Å within {max_attempts} attempts. "
             "Proceeding to cell distortion using the un-rattled structure.",
             UserWarning,
             stacklevel=2

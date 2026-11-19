@@ -4,7 +4,7 @@ from tqdm import tqdm
 from spglib import get_symmetry_dataset
 from ions import Percolator, Edge
 
-from .core import Grid
+from .core import Grid, _strip_labels
 from ._neighborhood import nn_list
 
 
@@ -196,6 +196,7 @@ class _DefectSampler:
     def _append_configurations(self, base, mesh_pos, verbose=False, tags=None):
         """Construct configurations"""
         configs = []
+        base = _strip_labels(base.copy())
 
         for p in tqdm(mesh_pos, desc="creating configurations", disable=not verbose):
             framework = base.copy()

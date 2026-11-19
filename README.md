@@ -106,6 +106,51 @@ cfgs += frenkel_pairs(atoms, 3, **params)
 
 Each configuration has `atoms.info["defect"]` set to `"interstitial"`, `"vacancy"` or `"frenkel_pair"`.
 
+### Training sets: defects, selection, perturbation
+
+From the shell (one `.xyz` per material, plus `config.yaml` and `summary.csv`):
+
+```bash
+gridmlip dataset --print-config > dataset.yaml      # all settings with defaults; edit
+gridmlip dataset structures.xyz --config dataset.yaml --specie 3 --output dataset/
+gridmlip dataset structures.xyz --config dataset.yaml --dry-run      # candidate counts only
+```
+
+Reruns skip finished materials. On a cluster, split the work with a job array; the result does not depend on the split:
+
+```bash
+#SBATCH --array=0-31
+gridmlip dataset structures.xyz --config dataset.yaml --output dataset/ --chunk ${SLURM_ARRAY_TASK_ID}/32
+```
+
+The same recipe in Python, built from the public functions (identical files for the same settings):
+
+```python
+from pathlib import Path
+from ase.io import write
+from gridmlip.defects import interstitials, vacancies, frenkel_pairs
+from gridmlip.dataset import soap_features, select_fps, rattle, save_settings
+
+seed, out = 42, Path("dataset"); out.mkdir(exist_ok=True)
+p = dict(resolution=0.25, r_min=1.5, r_cut=5.0, symprec=0.1)
+save_settings(out / "config.yaml", seed=seed, specie=3, defects=p)   # + library versions
+
+for atoms in atoms_list:                                  # atoms.info["material_id"] names the files
+    mid = atoms.info["material_id"]
+    cfgs = (interstitials(atoms, 3, **p)
+            + vacancies(atoms, 3, max_sep_dist="auto", upper_bound=6.0, **p)
+            + frenkel_pairs(atoms, 3, max_sep_dist="auto", upper_bound=6.0, **p))
+    X = soap_features(cfgs, center=-1, r_cut=6.0, n_max=3, l_max=2, sigma=0.3)
+    idx = select_fps(X, pca=0.95, max_samples=500, rel_tol=1e-5)
+    train = [rattle(cfgs[j], seed=seed, pos_std=0.05, strain_std=0.02, d_min=1.0) for j in idx]
+    write(out / f"dataset_{mid}.xyz", train)
+```
+
+`rattle` is the only random step. Its random stream is derived from the seed, `material_id` and the
+configuration itself, so the same structure always gets the same perturbation, regardless of the order
+of structures, the split into chunks, or the generation settings. Every output records
+`rattle_seed`, `rattle_key` and `rattle_copy`; `rattle(cfg, seed=42, key=j)` reproduces datasets made with 0.2.
+
 ### Migrating from 0.2
 
 | 0.2 | 0.3 |
@@ -117,6 +162,7 @@ Each configuration has `atoms.info["defect"]` set to `"interstitial"`, `"vacancy
 | `bvse_distribution(atoms, "Li+")` | `gm.bvse(atoms, "Li+")` |
 | `integrations.mace.evaluate_atoms_list(...)` | `grid.evaluate(predictors.mace(...))` |
 | `DefectGenerator(...).generate_dataset("int")` | `defects.interstitials(...)` |
+| `dataset.generate_defects_dataset(...)` | `gridmlip dataset ...` or the recipe above |
 
 The 0.2 names still work in 0.3 and emit a `DeprecationWarning`; they will be removed in 0.4.
 

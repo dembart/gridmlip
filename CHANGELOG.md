@@ -13,12 +13,19 @@
 - `gridmlip.defects.interstitials / vacancies / frenkel_pairs`: configurations are tagged with `info["defect"]` and `info["defect_site"]`.
 - `specie` accepts symbols ("Li") as well as atomic numbers.
 
+- Dataset building blocks in `gridmlip.dataset`: `soap_features`, `select_fps` (PCA + FPS, same selection as 0.2.7), `rattle` (reproducible perturbation keyed by seed, `material_id` and the configuration's content; `key=j` reproduces 0.2.7), `save_settings`/`load_settings` (settings + library versions).
+- `gridmlip dataset` command: YAML config (`--print-config`), resume by default, `--dry-run`, `--chunk i/n` for job arrays, `summary.csv`. Results do not depend on structure order or the chunk split.
+
+### Fixed
+- Generated configurations (defects, `prepare_configurations`) no longer inherit reference labels of the parent structure (`energy`, `REF_*`, forces, stress, ...). Before, they were written to `.xyz` and could be read back as if they were labels of the defect structures.
+- `rattle_atoms`: if the input already has a pair closer than `d_min` (an ion placed at `r_min < d_min`), the check now uses that pair's distance. Before, every attempt failed and the structure was returned without position noise.
+
 ### Changed
 - `Grid(verbose=False)` is now the default; call `grid.summary()` to see the mesh summary.
 - `prepare_configurations(config_format="pymatgen")` now places the ion at Cartesian coordinates. Before, Cartesian values were passed as fractional ones.
 
 ### Deprecated (removed in 0.4)
-- `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`; `DefectGenerator`; `integrations.bvse.bvse_distribution`; `integrations.mace/sevennet/gnn_lib.evaluate_atoms_list*`.
+- `Grid.construct_cfgs`, `read_processed_cfgs`, `percolation_barriers`, `write_grd`, `write_cube`; `DefectGenerator`; `integrations.bvse.bvse_distribution`; `integrations.mace/sevennet/gnn_lib.evaluate_atoms_list*`; `dataset.generate_defects_dataset`.
 
 ## 0.3.0: correctness fixes (included in 0.3.0)
 

@@ -39,13 +39,16 @@ fast = [
     "numba>=0.62,<0.69; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 scikit-learn = ["scikit-learn"]
-dscribe = ["dscribe"]
+dscribe = ["dscribe>=2"]
 bvse = ["pymatgen"]
-dataset = ["scikit-learn", "dscribe", "vesin", "pyyaml"]
+dataset = ["scikit-learn", "dscribe>=2", "fpsample", "vesin", "pyyaml"]
 test = ["pytest"]
 mace = ["mace-torch"]
 sevenn = ["sevenn"]
 gnn = ["gnn_lib"]
+
+[project.scripts]
+gridmlip = "gridmlip.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/dembart/gridmlip"

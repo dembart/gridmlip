@@ -21,6 +21,22 @@ def _deprecated(old, new):
                   DeprecationWarning, stacklevel=3)
 
 
+_LABEL_WORDS = ("energy", "force", "stress", "virial", "dipole", "charges")
+
+
+def _strip_labels(atoms):
+    """
+    Remove reference labels inherited from the parent structure (energy, forces, stress, ...)
+    from atoms.info and atoms.arrays, so generated configurations are never mistaken for labeled data.
+    """
+    for key in [k for k in atoms.info if k.startswith("REF_") or any(w in k.lower() for w in _LABEL_WORDS)]:
+        del atoms.info[key]
+    for key in [k for k in atoms.arrays if k.startswith("REF_") or any(w in k.lower() for w in _LABEL_WORDS)]:
+        del atoms.arrays[key]
+    atoms.calc = None
+    return atoms
+
+
 def _as_atomic_number(specie):
     if isinstance(specie, str):
         symbol = re.sub(r"[\d+\-]", "", specie)
@@ -271,7 +287,7 @@ class Grid:
         """
         points = self.points
         cutoff = self.r_cut if supercell_cutoff is None else supercell_cutoff
-        base = self._repeat_atoms(self.base, cutoff, supercell_size=supercell_size)
+        base = _strip_labels(self._repeat_atoms(self.base, cutoff, supercell_size=supercell_size))
         configurations = []
 
         if config_format == "ase":
