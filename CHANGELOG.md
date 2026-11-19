@@ -16,7 +16,7 @@
 - `specie` accepts symbols ("Li") as well as atomic numbers.
 
 - Dataset building blocks in `gridmlip.dataset`: `soap_features`, `select_fps` (PCA + FPS, same selection as 0.2.7), `rattle` (reproducible perturbation keyed by seed, `material_id` and the configuration's content; `key=j` uses the 0.2.7 random stream for configuration `j`), `save_settings`/`load_settings` (settings + library versions).
-- `gridmlip.dataset.build_dataset(structures, config, output_dir, ...)`: the function behind `gridmlip dataset`. Settings and structures are validated before any work: out-of-range values (all reported at once), duplicate or file-unsafe `material_id`s, structures without the mobile ion, and reuse of an output folder made with different settings (allowed with `overwrite`).
+- `gridmlip.dataset.build_dataset(structures, config, output_dir, ...)`: the function behind `gridmlip dataset`. Everything that defines the dataset, `specie` and `seed` included, comes only from the config; arguments only control the run (`output_dir`, `dry_run`, `overwrite`, `chunk`). Settings and structures are validated before any work: out-of-range values (all reported at once), duplicate or file-unsafe `material_id`s, structures without the mobile ion, and reuse of an output folder made with different settings (allowed with `overwrite`).
 - `gridmlip dataset` command: YAML config (`--print-config`), resume by default, `--dry-run`, `--chunk i/n` for job arrays, `summary.csv`. Results do not depend on structure order or the chunk split.
 
 ### Fixed

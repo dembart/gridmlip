@@ -299,11 +299,9 @@ def run(atoms_list, output_dir, settings, dry_run=False, overwrite=False, chunk=
 
 def build_dataset(
     structures,
-    config=None,
+    config,
     output_dir="dataset",
     *,
-    specie: int | None = None,
-    seed: int | None = None,
     dry_run: bool = False,
     overwrite: bool = False,
     chunk=(0, 1),
@@ -318,13 +316,12 @@ def build_dataset(
     structures: str, Path or list of ase.Atoms
         structures, or a file ASE can read; atoms.info['material_id'] names the outputs
         (must be unique; default: index in the list)
-    config: str, Path, dict or None
-        YAML settings (see ``gridmlip dataset --print-config``), a config.yaml written by an
-        earlier run, or a dict with the same groups; None = defaults
+    config: str, Path or dict
+        everything that defines the dataset (specie, seed, defect, SOAP, selection and rattle
+        settings): a YAML file (see ``gridmlip dataset --print-config``), a config.yaml written by
+        an earlier run, or a dict with the same groups. ``specie`` is required.
     output_dir: str or Path, 'dataset' by default
         one folder per dataset; it refuses settings different from the ones it was made with
-    specie, seed: optional
-        override the config
     dry_run: bool
         only count candidates per material (writes summary.csv only)
     overwrite: bool
@@ -338,7 +335,7 @@ def build_dataset(
 
     Example
     -------
-    build_dataset("structures.xyz", config="li.yaml", output_dir="datasets/li", specie=3, dry_run=True)
+    build_dataset("structures.xyz", config="li.yaml", output_dir="datasets/li", dry_run=True)
     """
     from .settings import load_settings
 
@@ -346,8 +343,7 @@ def build_dataset(
         base = config or {}
     else:
         base = load_settings(config)
-    overrides = {k: v for k, v in (("specie", specie), ("seed", seed)) if v is not None}
-    settings = merge_settings(base, overrides)
+    settings = merge_settings(base)
 
     if isinstance(chunk, str):
         try:

@@ -127,8 +127,8 @@ Each configuration has `atoms.info["defect"]` set to `"interstitial"`, `"vacancy
 From the shell (one `.xyz` per material, plus `config.yaml` and `summary.csv`):
 
 ```bash
-gridmlip dataset --print-config > dataset.yaml      # all settings with defaults; edit
-gridmlip dataset structures.xyz --config dataset.yaml --specie 3 --output dataset/
+gridmlip dataset --print-config > dataset.yaml      # all settings with defaults; set specie, seed, ...
+gridmlip dataset structures.xyz --config dataset.yaml --output dataset/
 gridmlip dataset structures.xyz --config dataset.yaml --dry-run      # candidate counts only
 ```
 
@@ -144,7 +144,7 @@ The same in one Python call (it is exactly what the command runs):
 ```python
 from gridmlip.dataset import build_dataset
 
-summary = build_dataset("structures.xyz", config="dataset.yaml", output_dir="datasets/li", specie=3)
+summary = build_dataset("structures.xyz", config="dataset.yaml", output_dir="datasets/li")
 ```
 
 Before any work starts, settings and structures are checked: unknown or out-of-range settings,

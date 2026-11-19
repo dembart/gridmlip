@@ -15,8 +15,8 @@ def _dataset(args):
         print("error: an input structure file is required", file=sys.stderr)
         return 2
     try:
-        rows = build_dataset(args.input, config=args.config, output_dir=args.output, specie=args.specie,
-                             seed=args.seed, dry_run=args.dry_run, overwrite=args.overwrite,
+        rows = build_dataset(args.input, config=args.config, output_dir=args.output,
+                             dry_run=args.dry_run, overwrite=args.overwrite,
                              chunk=args.chunk, progress=not args.quiet)
     except (ValueError, KeyError, OSError) as exc:  # invalid input or settings: nothing was computed
         print(f"error: {exc}", file=sys.stderr)
@@ -35,10 +35,9 @@ def main(argv=None):
                        description="defects -> SOAP -> farthest point sampling -> rattle; "
                                    "one .xyz per material, plus config.yaml and summary.csv")
     p.add_argument("input", nargs="?", help="structures (any file ASE reads; info['material_id'] names outputs)")
-    p.add_argument("--config", help="YAML settings (see --print-config); a previous config.yaml works too")
+    p.add_argument("--config", help="YAML settings incl. specie and seed (see --print-config); "
+                                     "a previous config.yaml works too")
     p.add_argument("--output", default="dataset", help="output directory (default: dataset)")
-    p.add_argument("--specie", type=int, help="atomic number of the mobile specie (overrides config)")
-    p.add_argument("--seed", type=int, help="dataset seed (overrides config)")
     p.add_argument("--chunk", default="0/1", help="process materials i, i+n, ... (e.g. $SLURM_ARRAY_TASK_ID/32)")
     p.add_argument("--dry-run", action="store_true", help="only count candidates per material")
     p.add_argument("--overwrite", action="store_true", help="recompute materials whose file exists")

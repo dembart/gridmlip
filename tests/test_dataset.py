@@ -279,8 +279,21 @@ def test_cli_reports_invalid_input_without_traceback(tmp_path, capsys):
     a, b = _materials()
     b.info["material_id"] = "lfp"
     write(tmp_path / "dup.xyz", [a, b])
-    assert main(["dataset", str(tmp_path / "dup.xyz"), "--specie", "3", "--output", str(tmp_path / "o"),
-                 "--quiet"]) == 2
+    import yaml
+    (tmp_path / "cfg.yaml").write_text(yaml.safe_dump(FAST))
+    assert main(["dataset", str(tmp_path / "dup.xyz"), "--config", str(tmp_path / "cfg.yaml"),
+                 "--output", str(tmp_path / "o"), "--quiet"]) == 2
     assert "duplicate material_id" in capsys.readouterr().err
-    assert main(["dataset", str(tmp_path / "missing.xyz"), "--specie", "3", "--quiet"]) == 2
+    assert main(["dataset", str(tmp_path / "missing.xyz"), "--config", str(tmp_path / "cfg.yaml"),
+                 "--quiet"]) == 2
     assert "missing.xyz" in capsys.readouterr().err
+
+
+def test_dataset_settings_only_come_from_the_config():
+    import inspect
+    from gridmlip.dataset import build_dataset
+
+    params = inspect.signature(build_dataset).parameters
+    assert "specie" not in params and "seed" not in params
+    with pytest.raises(SystemExit):
+        main(["dataset", "x.xyz", "--specie", "3"])
