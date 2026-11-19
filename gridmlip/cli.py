@@ -5,10 +5,8 @@ import sys
 
 def _dataset(args):
     import yaml
-    from ase.io import read
 
-    from .dataset.recipe import DEFAULTS, merge_settings, run
-    from .dataset.settings import load_settings
+    from .dataset.recipe import DEFAULTS, build_dataset
 
     if args.print_config:
         print(yaml.safe_dump(DEFAULTS, sort_keys=False, default_flow_style=False), end="")
@@ -16,20 +14,13 @@ def _dataset(args):
     if args.input is None:
         print("error: an input structure file is required", file=sys.stderr)
         return 2
-
-    overrides = {k: v for k, v in (("specie", args.specie), ("seed", args.seed)) if v is not None}
-    settings = merge_settings(load_settings(args.config) if args.config else {}, overrides)
-
     try:
-        i, n = (int(x) for x in args.chunk.split("/"))
-        assert 0 <= i < n
-    except Exception:
-        print(f"error: --chunk must look like i/n with 0 <= i < n, got {args.chunk!r}", file=sys.stderr)
+        rows = build_dataset(args.input, config=args.config, output_dir=args.output, specie=args.specie,
+                             seed=args.seed, dry_run=args.dry_run, overwrite=args.overwrite,
+                             chunk=args.chunk, progress=not args.quiet)
+    except (ValueError, KeyError, OSError) as exc:  # invalid input or settings: nothing was computed
+        print(f"error: {exc}", file=sys.stderr)
         return 2
-
-    atoms_list = read(args.input, index=":")
-    rows = run(atoms_list, args.output, settings, dry_run=args.dry_run, overwrite=args.overwrite,
-               chunk=(i, n), progress=not args.quiet)
     ok = sum(r["status"] == "ok" for r in rows)
     print(f"{len(rows)} materials: {ok} ok, {len(rows) - ok} skipped/existing/failed "
           f"(see {args.output}/summary*.csv)")

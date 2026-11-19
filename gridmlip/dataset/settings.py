@@ -5,22 +5,24 @@ from pathlib import Path
 import numpy as np
 
 
+def to_serializable(obj):
+    """Plain Python types for YAML (paths, tuples, numpy arrays and scalars)."""
+    if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, (tuple, list)):
+        return [to_serializable(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    return obj
+
+
 def save_config(config, output_dir, filename="config.yaml"):
     """Save generation parameters to a YAML file."""
     import yaml
-
-    def to_serializable(obj):
-        if isinstance(obj, Path):
-            return str(obj)
-        if isinstance(obj, (tuple, list)):
-            return [to_serializable(x) for x in obj]
-        if isinstance(obj, dict):
-            return {k: to_serializable(v) for k, v in obj.items()}
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, np.generic):
-            return obj.item()
-        return obj
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

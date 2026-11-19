@@ -139,7 +139,20 @@ Reruns skip finished materials. On a cluster, split the work with a job array; t
 gridmlip dataset structures.xyz --config dataset.yaml --output dataset/ --chunk ${SLURM_ARRAY_TASK_ID}/32
 ```
 
-The same recipe in Python, built from the public functions (identical files for the same settings):
+The same in one Python call (it is exactly what the command runs):
+
+```python
+from gridmlip.dataset import build_dataset
+
+summary = build_dataset("structures.xyz", config="dataset.yaml", output_dir="datasets/li", specie=3)
+```
+
+Before any work starts, settings and structures are checked: unknown or out-of-range settings,
+duplicate `material_id`s, structures without the mobile ion, and an output folder that already holds a
+dataset made with different settings are all errors (pass `overwrite=True` / `--overwrite` to recompute
+with new settings).
+
+The recipe written out with the public functions (identical files for the same settings):
 
 ```python
 from pathlib import Path

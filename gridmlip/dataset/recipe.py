@@ -7,6 +7,7 @@ It uses only public building blocks, so the README loop and the command give ide
 """
 import copy
 import csv
+import numbers
 from pathlib import Path
 
 DEFAULTS = {
@@ -125,9 +126,113 @@ def build_material(atoms, settings, dry_run=False):
     return train, row
 
 
+_RANGES = {
+    # (group, key): (check, message)
+    ("defects", "resolution"): (lambda v: v > 0, "must be > 0"),
+    ("defects", "r_min"): (lambda v: v >= 0, "must be >= 0"),
+    ("defects", "r_cut"): (lambda v: v > 0, "must be > 0"),
+    ("defects", "upper_bound"): (lambda v: v > 0, "must be > 0"),
+    ("defects", "max_sep_dist"): (lambda v: v == "auto" or v > 0, "must be 'auto' or > 0"),
+    ("limits", "max_atoms"): (lambda v: v >= 2, "must be >= 2"),
+    ("limits", "max_candidates"): (lambda v: v >= 1, "must be >= 1"),
+    ("soap", "r_cut"): (lambda v: v > 0, "must be > 0"),
+    ("soap", "sigma"): (lambda v: v > 0, "must be > 0"),
+    ("selection", "max_samples"): (lambda v: v >= 1, "must be >= 1"),
+    ("selection", "rel_tol"): (lambda v: v >= 0, "must be >= 0"),
+    ("selection", "pca"): (lambda v: v is None or (0 < v < 1) or (int(v) == v and v >= 1),
+                           "must be null, a fraction in (0, 1) or a number of components >= 1"),
+    ("rattle", "copies"): (lambda v: int(v) == v and v >= 1, "must be an integer >= 1"),
+    ("rattle", "pos_std"): (lambda v: v >= 0, "must be >= 0"),
+    ("rattle", "strain_std"): (lambda v: v >= 0, "must be >= 0"),
+    ("rattle", "d_min"): (lambda v: v > 0, "must be > 0"),
+}
+
+
+def validate_settings(settings):
+    """Raise ValueError for missing or out-of-range settings (all problems at once)."""
+    from ase.data import chemical_symbols
+
+    problems = []
+    specie = settings.get("specie")
+    if specie is None:
+        problems.append("specie is required (atomic number of the mobile ion)")
+    elif not (isinstance(specie, numbers.Integral) and 0 < specie < len(chemical_symbols)):
+        problems.append(f"specie must be an atomic number, got {specie!r}")
+    if not isinstance(settings.get("seed"), numbers.Integral):
+        problems.append(f"seed must be an integer, got {settings.get('seed')!r}")
+    d = settings["defects"]
+    if d["r_cut"] <= d["r_min"]:
+        problems.append(f"defects.r_cut ({d['r_cut']}) must be larger than defects.r_min ({d['r_min']})")
+    if not d["types"]:
+        problems.append("defects.types is empty")
+    for (group, key), (ok, msg) in _RANGES.items():
+        if settings.get(group) is None:  # selection: null / rattle: null switch the step off
+            continue
+        value = settings[group][key]
+        try:
+            good = ok(value)
+        except TypeError:
+            good = False
+        if not good:
+            problems.append(f"{group}.{key} {msg}, got {value!r}")
+    if problems:
+        raise ValueError("Invalid dataset settings:\n  - " + "\n  - ".join(problems))
+
+
+def _check_structures(atoms_list, specie):
+    """Material ids must be unique and usable as file names; every structure must contain the ion."""
+    ids = [str(a.info.get("material_id", k)) for k, a in enumerate(atoms_list)]
+    seen, dups = set(), set()
+    for mid in ids:
+        (dups if mid in seen else seen).add(mid)
+    problems = []
+    if dups:
+        problems.append(f"duplicate material_id (they would share one output file): {sorted(dups)[:10]}")
+    bad = [m for m in ids if not m or "/" in m or "\\" in m or m in (".", "..")]
+    if bad:
+        problems.append(f"material_id not usable as a file name: {bad[:10]}")
+    missing = [mid for mid, a in zip(ids, atoms_list) if specie not in a.numbers]
+    if missing:
+        problems.append(f"{len(missing)} structure(s) contain no atom with Z={specie}: {missing[:10]}")
+    if problems:
+        raise ValueError("Invalid input structures:\n  - " + "\n  - ".join(problems))
+    return ids
+
+
+def _comparable(settings):
+    """Settings as they look after a YAML round trip, without the run record."""
+    import yaml
+    from .settings import to_serializable
+
+    record = {k: v for k, v in settings.items() if k not in ("versions", "created")}
+    return yaml.safe_load(yaml.safe_dump(to_serializable(record)))
+
+
+def _check_output(out, settings, overwrite):
+    """Refuse to mix two different configurations in one output folder."""
+    from .settings import load_settings
+
+    path = out / "config.yaml"
+    if not path.exists():
+        return False
+    previous = _comparable(load_settings(path))
+    current = _comparable(settings)
+    if previous == current:
+        return True
+    diff = sorted(k for k in set(previous) | set(current) if previous.get(k) != current.get(k))
+    if not overwrite:
+        raise ValueError(
+            f"{out} already holds a dataset made with different settings (differs in: {diff}). "
+            "Use a new output folder, or overwrite=True / --overwrite to recompute everything with the new settings."
+        )
+    return False
+
+
 def run(atoms_list, output_dir, settings, dry_run=False, overwrite=False, chunk=(0, 1), progress=True):
     """
     Build the dataset for a list of structures (what ``gridmlip dataset`` runs).
+
+    All settings and structures are checked before any work starts.
 
     Parameters
     ----------
@@ -152,20 +257,24 @@ def run(atoms_list, output_dir, settings, dry_run=False, overwrite=False, chunk=
 
     from .settings import save_settings
 
-    if settings["specie"] is None:
-        raise ValueError("specie is required (atomic number of the mobile specie)")
+    validate_settings(settings)
+    ids = _check_structures(atoms_list, settings["specie"])
+    i, n = chunk
+    if not (0 <= i < n):
+        raise ValueError(f"chunk must be (i, n) with 0 <= i < n, got {chunk}")
+
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    i, n = chunk
-    if i == 0 and not dry_run:
+    same_settings = _check_output(out, settings, overwrite)
+    if not dry_run and not same_settings:
         save_settings(out / "config.yaml", **settings)
 
     rows = []
     selected = [(k, a) for k, a in enumerate(atoms_list) if k % n == i]
     for k, atoms in tqdm(selected, desc="materials", disable=not progress):
         atoms = atoms.copy()
-        atoms.info.setdefault("material_id", k)
-        mid = atoms.info["material_id"]
+        mid = ids[k]
+        atoms.info["material_id"] = atoms.info.get("material_id", k)
         path = out / f"dataset_{mid}.xyz"
         if path.exists() and not overwrite and not dry_run:
             rows.append({"material_id": mid, "n_atoms": "", "candidates": "", "selected": "",
@@ -186,3 +295,69 @@ def run(atoms_list, output_dir, settings, dry_run=False, overwrite=False, chunk=
         w.writeheader()
         w.writerows(rows)
     return rows
+
+
+def build_dataset(
+    structures,
+    config=None,
+    output_dir="dataset",
+    *,
+    specie: int | None = None,
+    seed: int | None = None,
+    dry_run: bool = False,
+    overwrite: bool = False,
+    chunk=(0, 1),
+    progress: bool = True,
+):
+    """
+    Build a training set: defects -> SOAP -> farthest point sampling -> rattle, one .xyz per material.
+    This is exactly what ``gridmlip dataset`` runs.
+
+    Parameters
+    ----------
+    structures: str, Path or list of ase.Atoms
+        structures, or a file ASE can read; atoms.info['material_id'] names the outputs
+        (must be unique; default: index in the list)
+    config: str, Path, dict or None
+        YAML settings (see ``gridmlip dataset --print-config``), a config.yaml written by an
+        earlier run, or a dict with the same groups; None = defaults
+    output_dir: str or Path, 'dataset' by default
+        one folder per dataset; it refuses settings different from the ones it was made with
+    specie, seed: optional
+        override the config
+    dry_run: bool
+        only count candidates per material (writes summary.csv only)
+    overwrite: bool
+        recompute materials whose file exists; also allows new settings in an existing folder
+    chunk: (i, n) or 'i/n'
+        process materials i, i+n, ... (for job arrays); results do not depend on the split
+
+    Returns
+    -------
+    list of summary rows: {'material_id', 'n_atoms', 'candidates', 'selected', 'status'}
+
+    Example
+    -------
+    build_dataset("structures.xyz", config="li.yaml", output_dir="datasets/li", specie=3, dry_run=True)
+    """
+    from .settings import load_settings
+
+    if isinstance(config, dict) or config is None:
+        base = config or {}
+    else:
+        base = load_settings(config)
+    overrides = {k: v for k, v in (("specie", specie), ("seed", seed)) if v is not None}
+    settings = merge_settings(base, overrides)
+
+    if isinstance(chunk, str):
+        try:
+            chunk = tuple(int(x) for x in chunk.split("/"))
+        except ValueError:
+            raise ValueError(f"chunk must look like 'i/n', got {chunk!r}") from None
+    if isinstance(structures, (str, Path)):
+        from ase.io import read
+        atoms_list = read(structures, index=":")
+    else:
+        atoms_list = list(structures)
+    return run(atoms_list, output_dir, settings, dry_run=dry_run, overwrite=overwrite,
+               chunk=tuple(chunk), progress=progress)

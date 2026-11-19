@@ -206,3 +206,81 @@ def test_legacy_pipeline_runs_without_warnings(tmp_path):
                                        defect_type="int", max_samples=5)
     assert len(out) == 1 and 0 < len(out[0]) <= 5
     assert (tmp_path / "dataset_0.xyz").exists()
+
+
+# ------------------------------------------------------- guard rails
+
+def test_build_dataset_equals_command(tmp_path):
+    from ase.io import write
+    import yaml
+    from gridmlip.dataset import build_dataset
+
+    write(tmp_path / "in.xyz", _materials())
+    (tmp_path / "cfg.yaml").write_text(yaml.safe_dump(FAST))
+    rows = build_dataset(tmp_path / "in.xyz", config=tmp_path / "cfg.yaml", output_dir=tmp_path / "f",
+                         progress=False)
+    assert [r["status"] for r in rows] == ["ok", "ok"]
+    main(["dataset", str(tmp_path / "in.xyz"), "--config", str(tmp_path / "cfg.yaml"),
+          "--output", str(tmp_path / "c"), "--quiet"])
+    for mid in ("lfp", "lco"):
+        _same(read(tmp_path / "f" / f"dataset_{mid}.xyz", index=":"),
+              read(tmp_path / "c" / f"dataset_{mid}.xyz", index=":"))
+
+
+def test_duplicate_material_ids_are_rejected(tmp_path):
+    from gridmlip.dataset import build_dataset
+
+    a, b = _materials()
+    b.info["material_id"] = "lfp"
+    with pytest.raises(ValueError, match="duplicate material_id"):
+        build_dataset([a, b], config=FAST, output_dir=tmp_path, progress=False)
+    assert not list(tmp_path.iterdir())          # nothing was written
+
+
+def test_structures_without_the_ion_are_rejected(tmp_path):
+    from gridmlip.dataset import build_dataset
+
+    a, b = _materials()
+    del b[b.numbers == 3]
+    with pytest.raises(ValueError, match="no atom with Z=3"):
+        build_dataset([a, b], config=FAST, output_dir=tmp_path, progress=False)
+
+
+def test_out_of_range_settings_are_reported_together(tmp_path):
+    from gridmlip.dataset import build_dataset
+
+    bad = {"specie": 3, "defects": {"resolution": -0.1, "r_min": 6.0, "r_cut": 5.0},
+           "rattle": {"d_min": 0}, "selection": {"max_samples": 0}}
+    with pytest.raises(ValueError) as err:
+        build_dataset(_materials(), config=bad, output_dir=tmp_path, progress=False)
+    msg = str(err.value)
+    for part in ("defects.resolution", "r_cut (5.0) must be larger", "rattle.d_min", "selection.max_samples"):
+        assert part in msg
+    with pytest.raises(ValueError, match="specie is required"):
+        build_dataset(_materials(), config={}, output_dir=tmp_path / "x", progress=False)
+
+
+def test_output_folder_refuses_different_settings(tmp_path):
+    from gridmlip.dataset import build_dataset
+
+    build_dataset(_materials(), config=FAST, output_dir=tmp_path, progress=False)
+    changed = dict(FAST, seed=7)
+    with pytest.raises(ValueError, match=r"different settings \(differs in: \['seed'\]\)"):
+        build_dataset(_materials(), config=changed, output_dir=tmp_path, progress=False)
+    rows = build_dataset(_materials(), config=changed, output_dir=tmp_path, overwrite=True, progress=False)
+    assert [r["status"] for r in rows] == ["ok", "ok"]
+    assert load_settings(tmp_path / "config.yaml")["seed"] == 7
+    assert read(tmp_path / "dataset_lfp.xyz", index="0").info["rattle_seed"] == 7
+
+
+def test_cli_reports_invalid_input_without_traceback(tmp_path, capsys):
+    from ase.io import write
+
+    a, b = _materials()
+    b.info["material_id"] = "lfp"
+    write(tmp_path / "dup.xyz", [a, b])
+    assert main(["dataset", str(tmp_path / "dup.xyz"), "--specie", "3", "--output", str(tmp_path / "o"),
+                 "--quiet"]) == 2
+    assert "duplicate material_id" in capsys.readouterr().err
+    assert main(["dataset", str(tmp_path / "missing.xyz"), "--specie", "3", "--quiet"]) == 2
+    assert "missing.xyz" in capsys.readouterr().err
