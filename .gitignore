@@ -22,6 +22,7 @@ gridmlip/__pycache__/*
 *.xyz
 test
 *.txt
+!gridmlip/view/3Dmol-LICENSE.txt
 .ipynb_checkpoints
 
 

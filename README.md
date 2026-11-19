@@ -17,6 +17,7 @@ percolation barriers. It also generates defect configurations and training sets 
 - [Forces, stress and descriptors](#forces-stress-and-descriptors)
 - [Saving and visualization](#saving-and-visualization)
 - [Local minima and percolation radii](#local-minima-and-percolation-radii)
+- [Interactive view](#interactive-view)
 - [Defect configurations](#defect-configurations)
 - [Training datasets](#training-datasets)
 - [Notebooks](#notebooks)
@@ -108,6 +109,19 @@ emap.local_minima(min_distance=2.0, energy_window=0.5)
 grid.percolation_radii()
 ```
 
+## Interactive view
+
+```python
+emap.view()
+emap.view(level=0.6, supercell=(1, 2, 2), theme="light")
+emap.view().save("map.html")
+emap.view().open()
+```
+
+Inline in Jupyter, or a standalone page that works offline: atoms and polyhedra in VESTA's default colors and
+bond rules, an isosurface at the 1D percolation barrier, hover labels, click-to-measure distances, angles and
+polyhedra, and controls for the level, supercell and layers.
+
 ## Defect configurations
 
 ```python
@@ -145,6 +159,7 @@ gridmlip dataset structures.xyz --config dataset.yaml --output datasets/li --chu
 - [Percolation barriers with a batched MLIP](notebooks/01_mlip_barriers.ipynb)
 - [Bond valence site energy](notebooks/02_bvse.ipynb)
 - [Training dataset for an MLIP](notebooks/03_dataset.ipynb)
+- [Interactive view of energy maps](notebooks/04_view.ipynb)
 
 Upgrading from 0.2: see [CHANGELOG.md](CHANGELOG.md).
 

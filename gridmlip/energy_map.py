@@ -112,6 +112,14 @@ class EnergyMap:
             coord_type=coord_type,
         )
 
+    def view(self, **kwargs):
+        """
+        Interactive 3D view: structure, VESTA-style polyhedra and an isosurface of this map.
+        Shown inline in Jupyter; .save("map.html") or .open() otherwise. See gridmlip.view.view.
+        """
+        from .view import view
+        return view(self, **kwargs)
+
     def write(self, filename: str):
         """Write the map to .grd (VESTA) or .cube; the format is taken from the extension."""
         filename = str(filename)
