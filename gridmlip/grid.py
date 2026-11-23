@@ -202,11 +202,44 @@ class Grid:
         self._reductions[key] = red
         return red
 
+    def _selection(self, reduction, region=None):
+        """Irreducible points to evaluate: not blocked and, if a region is given, inside it."""
+        ir, mapping, min_dists = reduction
+        selected = min_dists > self.r_min
+        if region is None:
+            return selected
+        inside = region(self._mesh_cart) if callable(region) else region
+        inside = np.asarray(inside, dtype=bool).ravel()
+        if inside.size != len(mapping):
+            raise ValueError(f"region must cover the mesh: expected {len(mapping)} values, got {inside.size}")
+        # an irreducible point is evaluated if any of its images lies inside the region
+        ir_inside = np.zeros(len(ir), dtype=bool)
+        ir_inside[mapping[inside]] = True
+        return selected & ir_inside
+
     @property
     def points(self):
         """Cartesian coordinates of the irreducible points that are not blocked (to be evaluated)."""
-        ir, _, min_dists = self._reduction()
-        return self._mesh_cart[ir][min_dists > self.r_min]
+        return self.region_points()
+
+    def region_points(self, region=None):
+        """
+        Cartesian coordinates of the irreducible points to evaluate inside a region.
+
+        Parameters
+        ----------
+        region: optional
+            boolean array of shape ``mesh_shape``, or a callable taking Cartesian
+            positions (N, 3) of the mesh points and returning a boolean array (N,);
+            None means the whole mesh
+
+        Returns
+        -------
+        np.ndarray of shape (n, 3)
+        """
+        reduction = self._reduction()
+        ir, _, _ = reduction
+        return self._mesh_cart[ir][self._selection(reduction, region)]
 
     def __len__(self):
         """Number of points to evaluate."""
@@ -257,6 +290,7 @@ class Grid:
         filename: str | None = None,
         config_format: str = "ase",
         progress: bool = False,
+        region=None,
     ):
         """
         Host supercell + one mobile ion at each point of ``grid.points`` (same order).
@@ -278,11 +312,16 @@ class Grid:
         progress: bool, False by default
             show a progress bar
 
+        region: optional
+            only points inside this region (see ``region_points``); the order is that
+            of ``grid.region_points(region)``
+
         Returns
         -------
         list of configurations; atoms.info['grid_index'] is the index in grid.points
+        (in grid.region_points(region) with a region)
         """
-        points = self.points
+        points = self.region_points(region)
         cutoff = self.r_cut if supercell_cutoff is None else supercell_cutoff
         base = _strip_labels(self._repeat_atoms(self.base, cutoff, supercell_size=supercell_size))
         configurations = []
@@ -315,7 +354,8 @@ class Grid:
 
     # ------------------------------------------------------------ evaluation
 
-    def evaluate(self, model, *, supercell_cutoff: float | None = None, supercell_size: tuple | None = None):
+    def evaluate(self, model, *, supercell_cutoff: float | None = None, supercell_size: tuple | None = None,
+                 region=None):
         """
         Evaluate a model on the grid.
 
@@ -329,6 +369,12 @@ class Grid:
         supercell_cutoff, supercell_size:
             supercell of the configurations (structure models only), see prepare_configurations
 
+        region: optional
+            evaluate only the points inside this region, the others are +inf: a boolean
+            array of shape ``mesh_shape`` or a callable of Cartesian positions (see
+            ``region_points``). Saves evaluations when only part of the cell matters,
+            e.g. the surroundings of one hop
+
         Returns
         -------
         EnergyMap
@@ -340,19 +386,20 @@ class Grid:
             host = model.prepare(self.atoms, self._host_mask)
             labels = model.symmetry_labels(host)
             reduction = self._reduction(labels)
-            ir, _, min_dists = reduction
-            points = self._mesh_cart[ir][min_dists > self.r_min]
+            ir, _, _ = reduction
+            points = self._mesh_cart[ir][self._selection(reduction, region)]
             energies = model(points, host)
             info = model.describe(host)
         else:
             predictor = as_predictor(model)
-            cfgs = self.prepare_configurations(supercell_cutoff=supercell_cutoff, supercell_size=supercell_size)
+            cfgs = self.prepare_configurations(supercell_cutoff=supercell_cutoff, supercell_size=supercell_size,
+                                               region=region)
             energies = predictor(cfgs)
             reduction = self._reduction()
             info = dict(getattr(predictor, "info", {}) or {"model": repr(model)})
-        return self._energy_map(energies, reduction, info)
+        return self._energy_map(energies, reduction, info, region)
 
-    def load(self, energies, file_format: str | None = None):
+    def load(self, energies, file_format: str | None = None, region=None):
         """
         Energies computed elsewhere for ``prepare_configurations()`` (same order).
 
@@ -364,6 +411,9 @@ class Grid:
 
         file_format: str, optional
             'cfg' to force the MLIP 2.0 reader; otherwise inferred from the extension
+
+        region: optional
+            the region used in ``prepare_configurations(region=...)``
 
         Returns
         -------
@@ -377,11 +427,11 @@ class Grid:
             else:
                 energies = read_energies(source)
         info = {"model": "external", "source": source} if source else {"model": "external"}
-        return self._energy_map(energies, self._reduction(), info)
+        return self._energy_map(energies, self._reduction(), info, region)
 
-    def _energy_map(self, energies, reduction, info):
+    def _energy_map(self, energies, reduction, info, region=None):
         ir, mapping, min_dists = reduction
-        accessible = min_dists > self.r_min
+        accessible = self._selection(reduction, region)
         energies = np.asarray(energies, dtype=float).ravel()
         if energies.size != accessible.sum():
             raise ValueError(
@@ -397,6 +447,7 @@ class Grid:
             "specie": int(self.specie), "resolution": self.resolution, "r_min": self.r_min,
             "r_cut": self.r_cut, "symprec": self.symprec, "empty_framework": self.empty_framework,
             "mesh_shape": list(self.mesh_shape), "n_points": int(accessible.sum()),
+            "region": region is not None,
         })
         return EnergyMap(values, self.atoms, specie=self.specie, info=info)
 

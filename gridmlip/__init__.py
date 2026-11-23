@@ -11,7 +11,10 @@ if _util.find_spec("numba") is None:
     )
 from .grid import Grid
 from .energy_map import EnergyMap
+from .path import Path
+from .hops import Hop, Hops, HopMap, HopMaps, Paths
 from .models import BVSE, bvse
 from . import predictors
 
-__all__ = ["Grid", "EnergyMap", "BVSE", "bvse", "predictors", "__version__"]
+__all__ = ["Grid", "EnergyMap", "Path", "Hop", "Hops", "HopMap", "HopMaps", "Paths",
+           "BVSE", "bvse", "predictors", "__version__"]

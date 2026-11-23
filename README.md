@@ -18,6 +18,7 @@ percolation barriers. It also generates defect configurations and training sets 
     - [Forces, stress and descriptors](#forces-stress-and-descriptors)
     - [Saving and visualization](#saving-and-visualization)
     - [Local minima and percolation radii](#local-minima-and-percolation-radii)
+- [NEB paths of vacancy-assisted hops](#neb-paths-of-vacancy-assisted-hops)
     - [Interactive view](#interactive-view)
     - [Defect configurations](#defect-configurations)
     - [Training datasets](#training-datasets)
@@ -111,6 +112,32 @@ emap = gm.EnergyMap.load("li.npz")
 emap.local_minima(min_distance=2.0, energy_window=0.5)
 grid.percolation_radii()
 ```
+
+## NEB paths of vacancy-assisted hops
+
+The energy landscape of each hop of a percolation network (from [ions](https://github.com/dembart/ions)),
+computed with the hopping ion removed and a vacancy on the target site, gives the initial path of its NEB.
+All hops share one supercell, so their NEB energies can be compared.
+
+```python
+from ions import Percolator
+
+pl = Percolator(atoms, "Na", upper_bound=5.0)
+cutoff = pl.cutoff_search(3, bottleneck_radius=0.5)
+edges = pl.unique_edges(cutoff, 0.5)
+
+hops = gm.Hops(atoms, "Na", edges, supercell_cutoff=8.0, resolution=0.2, r_min=0.8, tube=2.5)
+paths = hops.evaluate(gm.BVSE("Na+")).paths(n_images=12)   # or an ASE calculator / predictor
+paths.barriers                                             # grid estimates, in the order of edges
+paths.write("neb_inputs", format="vasp")                   # hop_000/00/POSCAR, ... or extxyz
+
+# NEB (keep the given images) -> emins, emaxs per hop, in the order of edges
+pl.find_percolation_barriers(cutoff, 0.5, emins, emaxs, method="naive")
+```
+
+Only points within `tube` of each hop are evaluated (`Grid.evaluate(region=...)`). A single hop:
+`gm.Hop(atoms, source, target, offset).evaluate(model).path().images()`; any map: `emap.path(start, end)`.
+External calculations: `hops.prepare_configurations("cfgs.xyz")` and `hops.load("processed.xyz")`.
 
 ## Interactive view
 

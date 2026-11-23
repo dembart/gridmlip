@@ -5,6 +5,7 @@ from ase import Atoms
 
 from ._percolation_analysis import Percolyze
 from ._void_search import clustered_local_minima
+from .path import minimum_energy_path
 from .io import write_cube, write_grd
 
 __author__ = "Artem Dembitskiy"
@@ -111,6 +112,34 @@ class EnergyMap:
             cell=np.asarray(self.cell),
             coord_type=coord_type,
         )
+
+    def path(self, start, end, n_images: int = 12, well_radius: float = 0.5, margin: float = 0.0):
+        """
+        Lowest-barrier path of the mobile ion between two sites (e.g. a hop, or two
+        ``local_minima``): the lowest energy at which they are connected on the map,
+        and the shortest route through points at or below it.
+
+        Parameters
+        ----------
+        start, end: (3,) arrays
+            Cartesian positions of the two sites; end - start is the displacement
+            itself (shorter than half the cell in every direction)
+
+        n_images: int, 12 by default
+            number of points of the path, endpoints included
+
+        well_radius: float, 0.5 by default
+            each site is the lowest accessible point within this distance (Angstrom)
+
+        margin: float, 0.0 by default
+            energy allowance above the connecting level for the route (eV)
+
+        Returns
+        -------
+        Path (points, level, barrier, e_start, e_end, saddle, route)
+        """
+        return minimum_energy_path(self.values, self.cell, start, end, n_images=n_images,
+                                   well_radius=well_radius, margin=margin)
 
     def view(self, **kwargs):
         """
