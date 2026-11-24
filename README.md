@@ -148,9 +148,10 @@ emap.view().save("map.html")
 emap.view().open()
 ```
 
-Inline in Jupyter, or a standalone page that works offline: atoms and polyhedra in VESTA's default colors and
-bond rules, an isosurface at the 1D percolation barrier, hover labels, click-to-measure distances, angles and
-polyhedra, and controls for the level, supercell and layers.
+Inline in Jupyter or as a standalone page that works offline: VESTA-style atoms, bonds and polyhedra, and the
+map as an isosurface starting at the 1D percolation barrier with 1D/2D/3D presets. Options include
+`style="soft"`, `hide=["Li"]`, `hide_bonds=["Li"]`, `polyhedra=["Fe", "P"]`, `along="c"`.
+`gridmlip.view.structure_view(atoms)` shows a structure (or a CIF, POSCAR, CHGCAR, ... file) without a map.
 
 ## Defect configurations
 

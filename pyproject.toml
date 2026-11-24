@@ -55,13 +55,13 @@ zip-safe = true
 include-package-data = true
 
 [tool.setuptools.package-data]
-gridmlip = ["view/*.js", "view/*.html", "view/*.txt"]
+gridmlip = ["view/static/*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "gridmlip._version.__version__" }
 
 [tool.setuptools.packages.find]
-# This mimics 'packages = find:' from setup.cfg
+include = ["gridmlip*"]   # not tests/ or scripts/
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>__TITLE__</title>
+<link rel="icon" href="__FAVICON__">
+<!--app-->__HEAD__<!--/app-->
+__3DMOL__
+__CORE__
+<style>
+ :root{--bg:rgba(255,255,255,.94);--fg:#1f2328;--muted:#6b7280;--line:#e3e5e8;--field:#fff;--fieldline:#cfd3d8;
+       --accent:#2f8f63;--accent-soft:#e3f3ea;--shade:rgba(0,0,0,.35);--tab:#eef0f2;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+ body.dark{--bg:rgba(32,34,38,.94);--fg:#e6e6e6;--muted:#9aa0a6;--line:#3a3d43;--field:#2a2d32;--fieldline:#474b52;
+           --accent:#7fd1a4;--accent-soft:#2e3f36;--shade:rgba(0,0,0,.55);--tab:#26292d}
+ body{margin:0;background:#f7f7f5;font:12.5px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg)}
+ body.dark{background:#1f2125}
+ #viewer{position:fixed;top:0;bottom:0;left:var(--shift,0px);width:100vw;transition:left .18s ease}
+ html,body{overflow:hidden}
+ #axes{position:fixed;right:16px;bottom:16px;width:140px;height:140px;pointer-events:none;overflow:visible}
+ #axes text{font:600 13px ui-sans-serif,system-ui,sans-serif;pointer-events:auto;cursor:pointer;dominant-baseline:central;text-anchor:middle}
+ #panel{position:fixed;top:12px;left:12px;width:264px;max-height:calc(100vh - 24px);overflow:auto;
+        background:var(--bg);border:1px solid var(--line);border-radius:10px;
+        box-shadow:0 4px 18px rgba(0,0,0,.18);backdrop-filter:blur(6px)}
+ #tabs{display:flex;align-items:stretch;background:var(--tab);border-bottom:1px solid var(--line);border-radius:10px 10px 0 0;overflow-x:auto;scrollbar-width:none}
+ #tabs::-webkit-scrollbar{display:none}
+ .tab{display:flex;align-items:center;gap:2px;padding:5px 4px 5px 9px;max-width:120px;cursor:pointer;color:var(--muted);
+      border-right:1px solid var(--line);white-space:nowrap;flex:none}
+ .tab span{overflow:hidden;text-overflow:ellipsis} .tab:hover{color:var(--fg)}
+ .tab.on{background:var(--bg);color:var(--fg);font-weight:500}
+ .tab .x{border:none;background:none;color:inherit;cursor:pointer;padding:0 3px;font-size:13px;line-height:1;opacity:.55}
+ .tab .x:hover{opacity:1;color:#d14343}
+ #addtab{border:none;background:none;color:var(--muted);cursor:pointer;font-size:15px;padding:0 9px;flex:none} #addtab:hover{color:var(--accent)}
+ #head{display:flex;align-items:flex-start;gap:6px;padding:9px 12px;border-bottom:1px solid var(--line)}
+ #head .t{flex:1;min-width:0} #title{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #sub{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+ #sub:hover{color:var(--fg)} #sub:empty{display:none}
+ #info{margin:6px 0 0;font-size:11.5px;color:var(--muted)} #info table{border-collapse:collapse} #info td{padding:0 8px 0 0;white-space:nowrap;vertical-align:top}
+ #info b{color:var(--fg);font-weight:500;font-family:var(--mono)}
+ .icon{border:none;background:none;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
+ .icon:hover{color:var(--accent)}
+ body.collapsed #body{display:none} body.collapsed #head{border-bottom:none}
+ .sec{padding:9px 12px;border-bottom:1px solid var(--line)} .sec:last-child{border-bottom:none}
+ .sec h4{margin:0 0 7px;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+ .row{display:flex;align-items:center;gap:6px;margin:6px 0} .row .lab{width:58px;color:var(--muted);flex:none}
+ input[type=text],input[type=number],select{font:inherit;color:var(--fg);background:var(--field);
+   border:1px solid var(--fieldline);border-radius:6px;padding:3px 6px;min-width:0}
+ input[type=number]{width:34px;flex:none;text-align:center} .levelnum{width:62px;flex:none;font-family:var(--mono)} select{flex:1}
+ .unit{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .seg{display:inline-flex;border:1px solid var(--fieldline);border-radius:6px;overflow:hidden;flex:none}
+ .seg button{font:inherit;color:var(--fg);background:var(--field);border:none;border-right:1px solid var(--fieldline);
+   padding:3px 8px;cursor:pointer} .seg button:last-child{border-right:none}
+ .seg button:hover:not(:disabled){background:var(--accent-soft)} .seg button:disabled{color:var(--muted);cursor:default}
+ button.btn{font:inherit;color:var(--fg);background:var(--field);border:1px solid var(--fieldline);border-radius:6px;
+   padding:3px 9px;cursor:pointer;white-space:nowrap} button.btn:hover{background:var(--accent-soft)}
+ button.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff} body.dark button.btn.primary{color:#15241c}
+ input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0 0}
+ .pre{color:var(--muted);font-size:11.5px;margin:2px 0 0} .pre b{color:var(--fg);font-weight:500;font-family:var(--mono)}
+ .chips{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+ .chips label,label.chk{display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
+ .exp{border:none;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:10px;line-height:1;width:12px}
+ .exp:hover{color:var(--accent)}
+ .subp{margin:7px 0 2px 0;padding:6px 0 0;border-top:1px dashed var(--line)}
+ .subp h5{margin:0 0 5px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+ .egrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px} .egrid label{display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
+ .egrid.off{opacity:.45}
+ .brow{display:flex;align-items:center;gap:6px;margin:3px 0} .brow label{flex:1;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
+ .brow .kind{color:var(--muted);font-size:10.5px;font-family:var(--mono)} .bd{width:52px;flex:none;font-family:var(--mono);text-align:right} .bd.bad{border-color:#d14343;color:#d14343} .bdel{font-size:13px;padding:0 1px} .bdel:hover{color:#d14343}
+ .badd{display:flex;align-items:center;gap:4px;margin:6px 0 2px} .badd select{flex:none;width:58px} .badd .bd{width:46px}
+ .orow{display:flex;align-items:center;gap:8px;margin:2px 0 6px} .orow input{flex:1}
+ .dot{width:9px;height:9px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.35)}
+ input[type=checkbox]{accent-color:var(--accent);margin:0}
+ input[type=color]{width:18px;height:18px;padding:0;border:1px solid var(--fieldline);border-radius:4px;background:none;cursor:pointer;flex:none}
+ input[type=color]::-webkit-color-swatch-wrapper{padding:0} input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}
+ .layer{padding:2px 0 6px} .layer + .layer{border-top:1px dashed var(--line);padding-top:8px}
+ .lname{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+ .x{color:var(--muted)}
+ .hint{color:var(--muted);font-size:11.5px;margin:0 0 6px}
+ .tools{margin-left:auto;display:flex;gap:3px}
+ .tool{display:flex;align-items:center;justify-content:center;width:24px;height:22px;padding:0;border:1px solid var(--fieldline);border-radius:5px;
+   background:var(--field);color:var(--muted);cursor:pointer} .tool:hover{color:var(--fg)}
+ .tool.on{background:var(--accent);border-color:var(--accent);color:#fff} body.dark .tool.on{color:#15241c}
+ body.measuring #viewer{cursor:crosshair}
+ #out{white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;background:var(--field);
+   border:1px solid var(--line);border-radius:6px;padding:5px 7px;min-height:1.4em;max-height:200px;overflow:auto}
+ #out:empty::before{content:"nothing selected";color:var(--muted);font-family:inherit}
+ #poly{margin-top:8px;font-size:12px} #poly:empty{display:none}
+ #poly .ph{font-weight:600} #poly .pm{color:var(--muted);font-size:11.5px;margin:2px 0 4px}
+ #poly table{border-collapse:collapse;width:100%} #poly td{padding:1px 0}
+ #poly td.r{text-align:right;font-family:var(--mono)}
+ #fname,#allnote{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .step{width:24px;padding:3px 0!important;text-align:center} #prev,#next{font-size:15px;line-height:1}
+ #msg{color:#d14343;font-size:11.5px;white-space:pre-wrap} #msgsec:has(#msg:empty){display:none}
+ .hidden{display:none!important}
+ body.noframes .sec:not(#msgsec){display:none}
+ #drop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
+   background:rgba(47,143,99,.12);border:3px dashed var(--accent);font-size:16px;font-weight:600;color:var(--accent);opacity:0;transition:opacity .12s}
+ body.dragging #drop{opacity:1}
+ #empty{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;color:var(--muted);font-size:14px;text-align:center;gap:4px}
+ #shade{position:fixed;inset:0;background:var(--shade);display:flex;align-items:center;justify-content:center;z-index:10}
+ #dlg{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;width:340px;max-width:calc(100vw - 32px);
+   box-shadow:0 8px 30px rgba(0,0,0,.3)}
+ #dlg h3{margin:0 0 6px;font-size:13.5px} #dlg p{margin:0 0 12px;color:var(--muted);white-space:pre-wrap}
+ #dlg .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+ #ctx{position:fixed;z-index:20;min-width:190px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;
+   padding:4px;box-shadow:0 6px 24px rgba(0,0,0,.28);backdrop-filter:blur(6px)}
+ #ctx button{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:none;border:none;border-radius:5px;padding:5px 9px;cursor:pointer}
+ #ctx button:hover{background:var(--accent-soft)} #ctx hr{border:none;border-top:1px solid var(--line);margin:4px 2px}
+ #ctx .along{display:flex;align-items:center;gap:4px;padding:3px 9px;color:var(--muted)}
+ #ctx .along button{display:inline-block;width:auto;padding:2px 9px;color:var(--fg);border:1px solid var(--fieldline)}
+ #ctx .ctxh{padding:4px 9px 3px;color:var(--muted);font-size:11.5px;white-space:nowrap;font-family:var(--mono)}
+ #ctx .on::after{content:"✓";float:right;color:var(--accent)}
+ #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--bg);color:var(--fg);border:1px solid var(--line);
+   border-radius:8px;padding:6px 12px;box-shadow:0 4px 16px rgba(0,0,0,.2);opacity:0;transition:opacity .2s;pointer-events:none}
+ #toast.on{opacity:1}
+</style></head><body class="dark">
+<div id="viewer"></div>
+<svg id="axes" viewBox="-55 -55 110 110"></svg>
+<div id="empty"><img id="logo" src="__LOGO__" alt="" width="84" height="84" style="border-radius:18px;margin-bottom:10px;opacity:.95"><div>Drop a structure or volumetric file here</div><div style="font-size:12px">CIF · POSCAR/CONTCAR · XDATCAR · OUTCAR · traj · xyz/extxyz · cube · grd · CHGCAR/LOCPOT</div></div>
+<div id="drop">Drop to open</div>
+<div id="shade" class="hidden"><div id="dlg"><h3 id="dlgt"></h3><p id="dlgp"></p><div class="acts" id="dlga"></div></div></div>
+<div id="ctx" class="hidden">
+ <div id="ctxobj"></div>
+ <button data-act="png2">Save PNG</button>
+ <button data-act="png4">Save PNG 4×</button>
+ <button data-act="pngclear">Save transparent PNG</button>
+ <button data-act="copy">Copy image</button>
+ <hr>
+ <button data-act="savepage">Save page…<span class="x" style="float:right">⌘S</span></button>
+ <div class="along">Export <button data-act="cif" class="xper">CIF</button><button data-act="poscar" class="xper">POSCAR</button><button data-act="xyz">xyz</button></div>
+ <hr>
+ <button data-act="reset">Iso view</button>
+ <button data-act="persp" id="ctxpersp">Perspective</button>
+ <div class="along">Look along <button data-act="a">a</button><button data-act="b">b</button><button data-act="c">c</button></div>
+</div>
+<div id="toast"></div>
+<input type="color" id="ctxcolor" tabindex="-1" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none">
+<input type="file" id="file" multiple class="hidden">
+<div id="panel">
+ <div id="tabs"><button id="addtab" title="new tab">+</button></div>
+ <div id="head">
+  <div class="t"><div id="title"></div><div id="sub" title="structure details"></div><div id="info" class="hidden"></div></div>
+  <button class="icon" id="openf" title="open files (or drop them on the page)">⊕</button>
+  <button class="icon" id="collapse" title="collapse / expand">−</button>
+ </div>
+ <div id="body">
+  <div class="sec hidden" id="isosec"><h4>Isosurfaces</h4><div id="layers"></div></div>
+  <div class="sec hidden" id="trajsec">
+   <h4>Frames</h4>
+   <div class="row"><span class="seg"><button class="step" id="prev" title="previous frame (←)">‹</button><button class="step" id="play" title="play / pause (space)">▶</button><button class="step" id="next" title="next frame (→)">›</button></span>
+    <input id="frame" type="range" min="0" step="1" value="0" style="flex:1;margin:0"><span id="fnum" class="unit" style="min-width:50px;text-align:right"></span></div>
+   <div class="row"><span class="lab">Speed</span><select id="fps"><option value="2">2 fps</option><option value="5">5 fps</option>
+    <option value="10" selected>10 fps</option><option value="20">20 fps</option><option value="30">30 fps</option></select></div>
+   <div class="row"><label class="chk"><input type="checkbox" id="t_all"> Show all frames</label><span id="allnote"></span></div>
+   <div id="fname"></div>
+  </div>
+  <div class="sec">
+   <h4>Layers</h4>
+   <div class="chips">
+    <label><input type="checkbox" id="t_atoms" checked> Atoms<button class="exp" data-panel="p_atoms" title="elements: show, color">▸</button></label>
+    <label><input type="checkbox" id="t_poly" checked> Polyhedra<button class="exp" data-panel="p_poly" title="opacity, centers, colors">▸</button></label>
+    <label><input type="checkbox" id="t_bonds" checked> Bonds<button class="exp" data-panel="p_bonds" title="bond types and lengths">▸</button></label>
+    <label><input type="checkbox" id="t_cell" checked> Cell</label>
+    <label><input type="checkbox" id="t_axes" checked> Axes</label>
+    <label id="l_mk"><input type="checkbox" id="t_mk" checked> Markers</label>
+   </div>
+   <div class="subp hidden" id="p_atoms"><h5>Atoms</h5><div class="egrid" id="elems"></div></div>
+   <div class="subp hidden" id="p_poly"><h5>Polyhedra</h5>
+    <div class="orow"><span class="x">Opacity</span><input type="range" id="popac" min="0.1" max="1" step="0.05"><span id="popacv" class="unit" style="width:30px"></span></div>
+    <div class="egrid" id="pcenters"></div></div>
+   <div class="subp hidden" id="p_bonds"><h5>Bonds <span class="x" style="text-transform:none;letter-spacing:0;font-weight:400">max length · count in the cell</span></h5>
+    <div id="btypes"></div>
+    <div class="badd"><select id="ba"></select><span class="x">–</span><select id="bb"></select><span class="x">≤</span>
+     <input type="text" id="bdist" class="bd" inputmode="decimal" placeholder="Å" title="max length, 0.3 to 15 Å"><button class="btn" id="badd" title="add or change a bond type">+</button></div></div>
+  </div>
+  <div class="sec">
+   <h4>View</h4>
+   <div class="row"><span class="lab">Along</span>
+    <span class="seg"><button id="va">a</button><button id="vb">b</button><button id="vc">c</button></span>
+    <button class="btn" id="home" style="margin-left:auto" title="tilted view (along b, turned 30° and tipped 20°), centered and fitted">Iso</button>
+   </div>
+   <div class="row"><span class="lab">Rotate</span>
+    <select id="axis"><option value="free">free (drag direction)</option><option value="a">about a</option>
+     <option value="b">about b</option><option value="c">about c</option><option value="uvw">about [u v w]</option></select>
+    <input id="uvw" type="text" value="1 1 0" style="width:52px;display:none" title="u v w">
+   </div>
+   <div class="row" id="scrow"><span class="lab">Supercell</span>
+    <input id="nx" type="number" min="1" max="4" value="1"><span class="x">×</span>
+    <input id="ny" type="number" min="1" max="4" value="1"><span class="x">×</span>
+    <input id="nz" type="number" min="1" max="4" value="1">
+   </div>
+   <div class="row"><span class="lab">Style</span><select id="style" title="lighting: Classic (VESTA-like), Soft (ambient occlusion, diffuse light), Glossy (reflections), Outline"></select></div>
+   <div class="row"><span class="lab">Theme</span><label class="chk"><input type="checkbox" id="t_dark"> Dark</label></div>
+  </div>
+  <div class="sec">
+   <h4 style="display:flex;align-items:center">Measure<span class="tools"><button class="tool" id="tool_d" title="distance: click 2 atoms"><svg viewBox="0 0 16 16" width="15" height="15"><path d="M2 10.5 10.5 2 14 5.5 5.5 14Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 7.5l1.2 1.2M7 5.5l1.7 1.7M9 3.5l1.2 1.2" stroke="currentColor" stroke-width="1.2"/></svg></button><button class="tool" id="tool_a" title="angle: click 3 atoms (the 2nd is the vertex)"><svg viewBox="0 0 16 16" width="15" height="15"><path d="M13.5 13H2.5L11 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 13a4.6 4.6 0 0 0-1.6-3.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></button></span></h4>
+   <p class="hint">Double-click 2 atoms: distance.<br>Right-click: image, view.<br>Esc: clear view</p>
+   <div id="out"></div>
+   <div id="poly"></div>
+   <div class="row" style="justify-content:flex-end;margin-bottom:0"><button class="btn" id="clear">Clear</button></div>
+  </div>
+  <div class="sec" id="msgsec" style="padding-top:0;border-bottom:none"><div id="msg"></div></div>
+ </div>
+</div>
+<script>
+const PRISTINE = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+const D = /*chucha-data*/__DATA__/*end-data*/;
+// the address can set what the page starts with (viewer.html?file=a.cif&add=b.cube&supercell=2,2,1&theme=light&along=c&panel=closed)
+const Q = new URLSearchParams(location.search);
+(function urlOptions() {
+  const sc = (Q.get("supercell") || "").split(/[,x×\s]+/).map(Number);
+  if (sc.length === 3 && sc.every(n => Number.isInteger(n) && n >= 1 && n <= 4)) D.opts.supercell = sc;
+  if (/^(dark|light)$/.test(Q.get("theme") || "")) D.opts.theme = Q.get("theme");
+  if (/^(classic|soft|glossy|outline)$/.test(Q.get("style") || "")) D.opts.style = Q.get("style");
+  if (/^[abc]$/.test(Q.get("along") || "")) D.opts.view = Q.get("along");
+})();
+const TABLES = __TABLES__;
+Chucha.setTables(TABLES);
+const K = Chucha, $ = id => document.getElementById(id);
+const say_msg = t => { $("msg").textContent = t || ""; };
+// 3Dmol lights with one diffuse light only. Its shaders are patched (3Dmol does not export them, so the GLSL text
+// is rewritten when it is handed to WebGL; unknown text passes unchanged) to read two uniforms set per style:
+//   chA = (ambient, diffuse, specular, shininess)    chB = (sky/ground ambient, wrap, rim, reflection)
+// Spheres are lit per pixel; meshes (bonds, polyhedra, isosurfaces) per vertex, with highlights and reflections
+// added after the color (vAdd), so they stay white instead of tinted.
+const STYLES = {
+  classic: {A: [0.32, 0.65, 0.45, 25.6], B: [0, 0, 0, 0], ao: 0, outline: false, label: "Classic"},
+  soft: {A: [0.50, 0.50, 0.0, 10], B: [0.65, 0.9, 0.0, 0.0], ao: 2.0, outline: false, label: "Soft"},  // matte, ambient occlusion
+  glossy: {A: [0.12, 0.62, 1.5, 160], B: [0.4, 0.0, 0.18, 0.9], ao: 1.0, outline: false, label: "Glossy"},  // studio reflections
+  outline: {A: [0.55, 0.45, 0.0, 1], B: [0.15, 0.8, 0.0, 0.0], ao: 0, outline: true, label: "Outline"},
+};
+const shading = {A: STYLES.classic.A, B: STYLES.classic.B, v: 1, gl: null, programs: new Map()};
+(function patchShaders() {
+  const LIB = `uniform vec4 chA;
+uniform vec4 chB;
+vec3 chEnv(vec3 r) {  // a studio: dark floor, bright sky, two soft boxes (view space, y up)
+  float t = r.y * 0.5 + 0.5;
+  vec3 c = mix(vec3(0.22, 0.22, 0.24), vec3(0.72, 0.75, 0.80), smoothstep(0.30, 0.85, t));
+  c += vec3(1.3) * smoothstep(0.82, 0.97, dot(r, normalize(vec3(-0.45, 0.65, 0.62))));
+  c += vec3(0.6) * smoothstep(0.90, 0.99, dot(r, normalize(vec3(0.75, 0.15, 0.64))));
+  return c;
+}
+void chLight(vec3 n, vec3 L, float specScale, float shinScale, out float mul, out vec3 add) {
+  float d = max((dot(n, L) + chB.y) / (1.0 + chB.y), 0.0);
+  float hemi = mix(1.0 - chB.x, 1.0, 0.5 + 0.5 * n.y);
+  mul = chA.x * hemi + chA.y * d;
+  vec3 h = normalize(L + vec3(0.0, 0.0, 1.0));
+  float s = pow(max(dot(n, h), 0.0), max(chA.w * shinScale, 1.0)) * chA.z * specScale;
+  float fres = pow(1.0 - clamp(n.z, 0.0, 1.0), 3.0);
+  add = vec3(s) + chB.w * (0.12 + 0.88 * fres) * chEnv(reflect(vec3(0.0, 0.0, -1.0), n)) + vec3(chB.z * fres);
+}
+`;
+  const lib = src => src.replace("void main()", LIB + "void main()");
+  const SPH_F = `float chMul; vec3 chAdd;
+    chLight(norm, normalize(vLight), 1.0, 1.0, chMul, chAdd);
+    vec3 color = vColor * chMul * directionalLightColor[ 0 ];`;
+  window.shaderPatches = {sphere: 0, mesh: 0};
+  function patch(src) {
+    let out = src;
+    // sphere imposters (per pixel)
+    const SPH_OUT = /(\w+) = vec4\(color, opacity\*opacity \);/;
+    if (/float dotProduct = dot\( norm, vLight \);[\s\S]*?vec3 color = vLight\*vColor;/.test(out) && SPH_OUT.test(out)) {
+      out = out.replace(/float dotProduct = dot\( norm, vLight \);[\s\S]*?vec3 color = vLight\*vColor;/, SPH_F)
+               .replace(SPH_OUT, "$1 = vec4(color + chAdd, opacity*opacity );");  // after the ambient occlusion factor
+      window.shaderPatches.sphere++;
+      return lib(out);
+    }
+    // mesh vertex shaders (lambert, lambertdouble, instanced)
+    if (out.includes("vLightFront += directionalLightColor[ 0 ] * directionalLightWeighting;")) {
+      const back = out.includes("vLightBack += directionalLightColor[ 0 ] * directionalLightWeightingBack;");
+      out = out.replace(/\b(varying|out) vec3 vLightFront;/, "$1 vec3 vLightFront;\n$1 vec3 vAdd;")  // GLSL 1 or 3 (WebGL2)
+        .replace("vLightFront += directionalLightColor[ 0 ] * directionalLightWeighting;",
+          `float chMul; vec3 chAdd;
+    chLight(transformedNormal, dirVector, 0.45, 2.2, chMul, chAdd);
+    vLightFront += directionalLightColor[ 0 ] * chMul; vAdd = chAdd;`);
+      if (back) out = out.replace("vLightBack += directionalLightColor[ 0 ] * directionalLightWeightingBack;",
+          `float chMulB; vec3 chAddB;
+    chLight(-transformedNormal, dirVector, 0.45, 2.2, chMulB, chAddB);
+    vLightBack += directionalLightColor[ 0 ] * chMulB;`);
+      window.shaderPatches.mesh++;
+      return lib(out);
+    }
+    // the matching mesh fragment shaders: add vAdd after the color
+    const FRAG = /(\w+) = \1 \* vec4\( (v?[cC]olor), opacity \);/;
+    if (/\b(varying|in) vec3 vLightFront;/.test(out) && FRAG.test(out)) {
+      out = out.replace(/\b(varying|in) vec3 vLightFront;/, "$1 vec3 vLightFront;\n$1 vec3 vAdd;")
+        .replace(FRAG, "$1 = $1 * vec4( $2, opacity );\n    if ( gl_FrontFacing ) $1.xyz += vAdd;");
+      return out;
+    }
+    return out;
+  }
+  const setStyle = (gl, p, e) => { gl.uniform4fv(e.a, shading.A); gl.uniform4fv(e.b, shading.B); e.v = shading.v; };
+  for (const C of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+    if (!C) continue;
+    const orig = C.prototype.shaderSource;
+    C.prototype.shaderSource = function (shader, src) { return orig.call(this, shader, patch(src)); };
+    const use = C.prototype.useProgram;
+    C.prototype.useProgram = function (p) {  // a program gets the current style when it is next used
+      use.call(this, p);
+      if (!p) return;
+      let e = shading.programs.get(p);
+      if (!e) { e = {a: this.getUniformLocation(p, "chA"), b: this.getUniformLocation(p, "chB"), v: 0}; shading.programs.set(p, e); }
+      shading.gl = this;
+      if (e.a && e.v !== shading.v) setStyle(this, p, e);
+    };
+  }
+  shading.push = () => {  // a new style for every program now (3Dmol may not switch programs before the next frame)
+    const gl = shading.gl; if (!gl) return;
+    const cur = gl.getParameter(gl.CURRENT_PROGRAM);
+    shading.programs.forEach((e, p) => { if (!gl.isProgram(p)) shading.programs.delete(p); else if (e.a) gl.useProgram(p); });
+    gl.useProgram(cur);
+  };
+})();
+const viewer = $3Dmol.createViewer("viewer", {backgroundColor: "#1f2125", orthographic: true});
+// 3Dmol's orthographic camera spans a fixed width: in a narrower window the structure got smaller. Zoom by the change
+// of width instead, so the structure keeps its size on screen when the window or a side panel is resized.
+let viewW = $("viewer").clientWidth;
+function keepWidth(w0) {  // a view saved at width w0 (a tab, a saved page), shown now
+  const w1 = $("viewer").clientWidth;
+  if (w0 > 0 && w1 > 0 && Math.abs(w1 - w0) > 0.5) viewer.zoom(w0 / w1);
+}
+// The panel floats over the top-left of the view. Shift the canvas right by half of the panel's footprint, so the centre
+// of the view (where the structure is centred) is the centre of the part of the window the panel does not cover.
+// The canvas keeps the full window width, so the zoom does not change; it is only cropped at the right edge.
+function updateShift() {
+  const p = $("panel"), collapsed = document.body.classList.contains("collapsed");
+  const r = p.getBoundingClientRect(), right = r.width ? r.right + 12 : 0;  // (offsetParent is null for fixed elements)
+  const shift = !collapsed && innerWidth - right >= 120 ? right / 2 : 0;
+  document.body.style.setProperty("--shift", shift.toFixed(1) + "px");
+}
+new ResizeObserver(updateShift).observe($("panel"));
+addEventListener("resize", updateShift);
+new ResizeObserver(() => {
+  const w = $("viewer").clientWidth;
+  if (!w) return;  // hidden (a collapsed notebook output): keep the last width
+  if (viewW && Math.abs(w - viewW) > 0.5) { viewer.resize(); viewer.zoom(viewW / w); viewer.render(); }
+  viewW = w;
+}).observe($("viewer"));
+const bgColor = () => $("t_dark").checked ? "#1f2125" : "#f7f7f5";
+function applyStyle() {  // lighting uniforms, then 3Dmol's own ambient occlusion and outline passes
+  const st = STYLES[$("style").value] || STYLES.classic;
+  shading.A = st.A; shading.B = st.B; shading.v++; shading.push();
+  const parts = [st.outline ? "outline" : "", st.ao ? "ambientOcclusion" : ""].filter(Boolean).join(" ");
+  viewer.setViewStyle({style: parts, strength: st.ao || undefined,
+                       color: $("t_dark").checked ? "#000000" : "#202124", width: 0.06});
+  viewer.render();
+}
+function applyTheme() {
+  document.body.classList.toggle("dark", $("t_dark").checked);
+  viewer.setBackgroundColor(bgColor());
+  if (T && T.frames.length) { drawCells(); viewer.render(); }
+}
+const fmt = v => v.toFixed(3);
+const P = v => ({x: v[0], y: v[1], z: v[2]});
+const add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const PALETTE = ["#8fd3a8", "#f2a7a7", "#9cc3f0", "#f3d48c", "#c9a7ef", "#8fd8d8"];
+const GHOST_ATOMS = 20000, GHOST_FRAMES = 200;  // "show all frames": at most this many atoms / frames drawn
+window.timing = {};
+let toastTimer = null;
+function toast(t) { $("toast").textContent = t; $("toast").classList.add("on"); clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("on"), 1400); }
+
+// ------------------------------------------------------------------ tabs: each keeps its own structure and settings
+// T is the current tab. Drawn-cell state (A, O, Ainv, periodic) and 3Dmol objects belong to the current tab only.
+const TOGGLES = {atoms: "t_atoms", poly: "t_poly", bonds: "t_bonds", cell: "t_cell", axes: "t_axes", mk: "t_mk", all: "t_all"};
+let tabs = [], T = null;
+let A = [[1, 0, 0], [0, 1, 0], [0, 0, 1]], O = [0, 0, 0], Ainv = K.inv3(A), periodic = true;
+let models = {}, shapes = {cell: [], poly: [], bonds: []}, marks = [], hilite = [], selMark = null, ghost = null;
+const centers = D.opts.centers;
+function defaults() {  // the settings a tab starts with, and gets back whenever a file is opened in it
+  return {sc: D.opts.supercell.slice(), view: null, hidden: new Set(D.opts.hide), showInfo: false,
+          colors: {}, polyColors: {}, polyHidden: new Set(), polyOnly: D.opts.centers ? new Set(D.opts.centers) : null,
+          polyOpacity: D.opts.polyhedra_opacity, bonds: {},
+          bondHidden: new Set((D.opts.hide_bonds || []).filter(k => k.includes("|"))), bondSeen: new Set(),
+          toggles: {atoms: D.opts.atoms, poly: D.opts.polyhedra, bonds: D.opts.bonds, cell: true, axes: D.opts.axes,
+                    mk: D.opts.markers, all: false}};
+}
+function newTab(title) {
+  const t = {title: title || "", frames: [], volumes: [], markers: [], fi: 0, quat: [0, 0, 0, 1], home: [0, 0, 0, 1], log: "", ...defaults()};
+  tabs.push(t);
+  return t;
+}
+function tabUI() {  // the panel controls that show the current tab's settings
+  for (const k in TOGGLES) $(TOGGLES[k]).checked = T.toggles[k];
+  ["nx", "ny", "nz"].forEach((id, d) => { $(id).value = T.sc[d]; });
+  $("elems").classList.toggle("off", !$("t_atoms").checked);
+}
+function resetTab() {  // a file was opened: default settings, view recentered on the (new) cell
+  Object.assign(T, defaults());
+  T.frames.forEach(f => { f.scene = null; });  // bond types are back to the defaults
+  tabUI();
+  setCell(); T.home = homeQuat(); T.quat = T.home.slice();
+}
+function renderTabs() {
+  $("tabs").querySelectorAll(".tab").forEach(e => e.remove());
+  tabs.forEach((t, k) => {
+    const el = document.createElement("div");
+    el.className = "tab" + (t === T ? " on" : "");
+    el.title = t.title || "empty";
+    el.innerHTML = `<span>${esc(t.title || "new")}</span><button class="x" title="close tab">×</button>`;
+    el.onclick = e => { if (e.target.classList.contains("x")) closeTab(t); else { switchTab(t); expand(); } };
+    $("tabs").insertBefore(el, $("addtab"));
+  });
+  const on = $("tabs").querySelector(".tab.on"); if (on) on.scrollIntoView({block: "nearest", inline: "nearest"});
+}
+function expand() { document.body.classList.remove("collapsed"); $("collapse").textContent = "−"; updateShift(); }
+function saveTab() {
+  if (!T) return;
+  if (T.frames.length) { T.view = viewer.getView(); T.viewW = $("viewer").clientWidth; }
+  T.log = $("out").textContent;
+  for (const k in TOGGLES) T.toggles[k] = $(TOGGLES[k]).checked;
+}
+function switchTab(t) {
+  if (t === T) return;
+  stopPlay(); saveTab();
+  if (T) { clearMarks(); T.volumes.forEach(clearIso); dropGhost(); }
+  T = t;
+  tabUI();
+  $("out").textContent = T.log;
+  renderTabs(); refreshUI();
+  build(!T.view);
+  if (T.view) { viewer.setView(T.view); keepWidth(T.viewW); applyCam(); viewer.render(); }
+}
+function closeTab(t) {
+  const k = tabs.indexOf(t);
+  if (t === T) { stopPlay(); clearMarks(); T.volumes.forEach(clearIso); dropGhost(); T = null; }
+  tabs.splice(k, 1);
+  if (!tabs.length) newTab();
+  if (!T) { const next = tabs[Math.min(k, tabs.length - 1)]; T = null; switchTab(next); }
+  else renderTabs();
+}
+function refreshUI() {  // everything in the panel that depends on the current tab's content
+  const has = T.frames.length > 0;
+  document.body.classList.toggle("noframes", !has);
+  $("empty").classList.toggle("hidden", has);
+  $("l_mk").classList.toggle("hidden", !T.markers.length);
+  setTitle(); renderLayers(); updateFrameUI();
+}
+
+function addFrames(list) {  // frames from Python or a parser: inherit symbols; scenes are built lazily
+  let prev = T.frames.length ? T.frames[T.frames.length - 1].symbols : null;
+  list.forEach(f => { if (!f.symbols) f.symbols = prev; prev = f.symbols; f.data = f.data || {}; T.frames.push(f); });
+}
+function addVolume(v) {  // v: {name, n, values | b64 | channels, cell, level?, presets?, label?, channel?, signed?}
+  const raw = v.channels || (v.b64channels && Object.fromEntries(Object.entries(v.b64channels).map(([c, b]) => [c, K.decodeGrid(b)])))
+              || {total: v.values || K.decodeGrid(v.b64)};
+  const channels = {};  // every channel resampled to the same (limited) grid
+  let n = v.n;
+  for (const c in raw) { const r = K.resample(raw[c], v.n, D.opts.grid_limit); channels[c] = r.values; n = r.n; }
+  const L = {name: v.name || `volume ${T.volumes.length}`, n, channels, cell: v.cell, cellpar: v.cellpar || null,
+             label: v.label || "", presets: v.presets || {}, color: v.color || PALETTE[T.volumes.length % PALETTE.length],
+             color2: v.color2 || negColor(v.color || PALETTE[T.volumes.length % PALETTE.length]), show: v.show ?? D.opts.isosurface, opacity: v.opacity ?? 0.9, open: false, shapes: [], vol: null};
+  T.volumes.push(L);
+  setChannel(L, v.channel && K.channelList(channels).includes(v.channel) ? v.channel : Object.keys(channels)[0], v.level, v.signed);
+}
+// the negative side of a ± isosurface: a soft red against the layer color (blue when the layer itself is red)
+const negColor = c => (c.toLowerCase() === "#f2a7a7" ? "#9cc3f0" : "#f2a7a7");
+function setChannel(L, c, level, signed) {  // the values a layer shows, their range, and whether they are signed
+  L.channel = c;
+  L.values = K.channelValues(L.channels, c);
+  const st = K.gridStats(L.values);
+  let lo = Infinity, hi = -Infinity;
+  for (const x of L.values) { if (x < lo) lo = x; if (x > hi) hi = x; }
+  // signed data (magnetization, density differences): both signs in comparable amounts -> ±level, |level| on the slider
+  L.signed = signed ?? (lo < 0 && hi > 0 && Math.min(-lo, hi) > 0.1 * Math.max(-lo, hi));
+  if (L.signed) {
+    const a = Array.from(L.values, Math.abs).sort((p, q) => p - q), top = a[Math.min(a.length - 1, Math.floor(0.995 * a.length))];
+    L.min = 0; L.max = Math.max(top, Math.abs(level ?? 0));
+    L.level = Math.abs(level ?? 0.15 * top);
+  } else {
+    const pre = Object.values(L.presets);
+    L.level = level ?? (pre.length ? pre[0] : st.mean);
+    L.min = st.min; L.max = Math.max(st.max, L.level, ...pre);
+  }
+}
+const frame = () => T.frames[T.fi];
+const cellOnly = f => !f.symbols.length;
+function label(i) { const f = frame(); return (f.labels && f.labels[i]) || `${f.symbols[i]}${i}`; }
+// Scenes (bonds, polyhedra) are cached for the most recent frames only: kept for every frame visited, playback
+// through a 768-atom x 200-frame trajectory held ~8 MB per frame (1.5 GB) and the page stalled in garbage collection.
+const SCENE_CACHE = 12, sceneLRU = [];
+function sceneOf(f) {  // cached per frame; rebuilt when the tab's bond types change
+  const key = JSON.stringify(T.bonds);
+  if (!f.scene || f.sceneKey !== key) {
+    const t = performance.now(); f.scene = K.scene(f, null, T.bonds); f.sceneKey = key; window.timing.scene_ms = performance.now() - t;
+  }
+  const i = sceneLRU.indexOf(f);
+  if (i >= 0) sceneLRU.splice(i, 1);
+  sceneLRU.push(f);
+  while (sceneLRU.length > SCENE_CACHE) { const old = sceneLRU.shift(); if (old !== f) { old.scene = null; old.sceneKey = null; } }
+  return f.scene;
+}
+const pairKey = (a, b) => [a, b].sort().join("|");
+const hiddenBondElems = new Set((D.opts.hide_bonds || []).filter(k => !k.includes("|")));  // view(hide_bonds=["Li"])
+function bondVisible(a, b) {
+  const key = pairKey(a, b);
+  if (hiddenBondElems.size && !T.bondSeen.has(key)) {  // a bond type of a hidden element starts hidden, once
+    T.bondSeen.add(key);
+    if (hiddenBondElems.has(a) || hiddenBondElems.has(b)) T.bondHidden.add(key);
+  }
+  return !T.bondHidden.has(key);
+}
+// bonds, polyhedra and the bonded atoms beyond the cell are found only while one of those layers is shown
+const needScene = () => $("t_bonds").checked || $("t_poly").checked;
+let builtWithScene = false;
+const polyVisible = e => !T.polyHidden.has(e) && (!T.polyOnly || T.polyOnly.has(e));
+function setCell() {  // the drawn cell: the frame's cell, or a padded bounding box for a molecule
+  const f = frame();
+  periodic = K.isPeriodic(f);
+  if (periodic) { A = f.cell; O = [0, 0, 0]; }
+  else {
+    const lo = [0, 1, 2].map(k => Math.min(...f.xyz.map(p => p[k])) - 2), hi = [0, 1, 2].map(k => Math.max(...f.xyz.map(p => p[k])) + 2);
+    A = [[hi[0] - lo[0], 0, 0], [0, hi[1] - lo[1], 0], [0, 0, hi[2] - lo[2]]]; O = lo;
+    T.sc = [1, 1, 1];
+  }
+  Ainv = K.inv3(A);
+  $("scrow").classList.toggle("hidden", !periodic);
+}
+function shift(i, j, k) { return [0, 1, 2].map(c => i * A[0][c] + j * A[1][c] + k * A[2][c]); }
+function copies() { const out = [], sc = T.sc; for (let i = 0; i < sc[0]; i++) for (let j = 0; j < sc[1]; j++)
+  for (let k = 0; k < sc[2]; k++) out.push([i, j, k]); return out; }
+
+// ------------------------------------------------------------------ title, info line and card
+function setTitle(defer) {
+  const f = T.frames.length ? frame() : null;
+  const t = T.title || (f && (f.formula || formula(f))) || "";
+  $("title").textContent = t || "chucha"; document.title = t || "chucha";
+  updateInfo(defer);
+}
+const formula = f => { const c = {}; f.symbols.forEach(s => c[s] = (c[s] || 0) + 1);
+  return Object.entries(c).map(([e, n]) => e + (n > 1 ? n : "")).join(""); };
+let infoTimer = null;
+function updateInfo(defer) {  // symmetry is found lazily (and not while playing)
+  clearTimeout(infoTimer);
+  if (!T.frames.length) { $("sub").textContent = ""; $("info").classList.add("hidden"); return; }
+  const f = frame();
+  if (!f.summary && (defer || playing)) { infoTimer = setTimeout(() => updateInfo(), playing ? 400 : 120); renderInfo(f, null); return; }
+  if (!f.summary) { const t = performance.now(); spaceGroup(f); f.summary = K.summary(f); window.timing.symmetry_ms = performance.now() - t; }
+  renderInfo(f, f.summary);
+}
+// Space groups of files opened in the page (pages made in Python bring spglib's): moyo, from the spglib authors, as
+// WebAssembly. The app ships it (moyo-wasm.js, moyo_wasm_bg.wasm next to index.html); other pages show the point group.
+const SG_MAX_ATOMS = 5000, SG_SYMPREC = 0.01;  // as spglib in Python
+let moyoReady = false;
+if (window.Moyo) fetch("moyo_wasm_bg.wasm").then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+  .then(b => {
+    Moyo.initSync({module: b}); moyoReady = true;
+    tabs.forEach(t => t.frames.forEach(f => { if (!f.spacegroup) delete f.summary; }));  // shown before moyo was ready
+    if (T && T.frames.length) updateInfo();
+  }).catch(e => console.warn("chucha: no space groups (moyo)", e));
+function spaceGroup(f) {  // "R-3m (166)", kept on the frame; null when it cannot be found here
+  if (f.spacegroup || f.sgTried || !moyoReady || !f.periodic || !f.symbols.length || f.symbols.length > SG_MAX_ATOMS) return f.spacegroup || null;
+  f.sgTried = true;
+  try {
+    const M = K.inv3(f.cell), Z = f.symbols.map(e => Math.max(0, TABLES.symbols.indexOf(e)));
+    const r = Moyo.analyze_cell(JSON.stringify({lattice: {basis: f.cell.flat()}, positions: f.xyz.map(p => K.toFrac(p, M)), numbers: Z}),
+                                SG_SYMPREC, "Standard");
+    f.spacegroup = `${r.hm_symbol.replace(/\s+/g, "")} (${r.number})`;
+  } catch (e) { console.warn("chucha: moyo", e); }
+  return f.spacegroup || null;
+}
+function renderInfo(f, s) {
+  const sym = s ? (s.spacegroup || (s.pointgroup ? (s.cellpar ? `pg ${s.pointgroup}` : s.pointgroup) : "")) : "…";
+  const parts = cellOnly(f) ? ["cell only: drop the structure"]
+    : [sym, `${f.symbols.length} atom${f.symbols.length === 1 ? "" : "s"}`, s && s.volume ? `${s.volume.toFixed(1)} Å³` : ""];
+  $("sub").textContent = parts.filter(Boolean).join(" · ") + (T.showInfo ? "  ▴" : "  ▾");
+  $("info").classList.toggle("hidden", !T.showInfo);
+  if (!T.showInfo || !s) return;
+  const rows = [];
+  const names = [...new Set(T.frames.map(g => (g.name || "").replace(/ #\d+$/, "")).filter(Boolean))];
+  if (!cellOnly(f)) rows.push(["formula", `${esc(s.reduced)}${s.Z > 1 ? ` · Z ${s.Z}` : ""}`]);
+  if (s.cellpar) {
+    const c = s.cellpar;
+    rows.push(["a b c", `<b>${c.slice(0, 3).map(x => x.toFixed(4)).join("  ")}</b> Å`]);
+    rows.push(["α β γ", `<b>${c.slice(3).map(x => x.toFixed(2)).join("  ")}</b> °`]);
+    rows.push(["volume", `<b>${s.volume.toFixed(2)}</b> Å³`]);
+  }
+  if (s.spacegroup) rows.push(["space group", `<b>${esc(s.spacegroup)}</b>`]);
+  if (s.pointgroup) rows.push(["point group", `<b>${esc(s.pointgroup)}</b>${s.system ? ` · ${s.system}` : ""}`]);
+  if (s.extent) rows.push(["size", `<b>${s.extent.map(x => x.toFixed(2)).join(" × ")}</b> Å`]);
+  if (names.length) rows.push(["file", esc(names.join(", "))]);
+  $("info").innerHTML = `<table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>`;
+}
+$("sub").onclick = () => { T.showInfo = !T.showInfo; updateInfo(); };
+
+// ------------------------------------------------------------------ volumes: unit-cell grid tiled over the supercell
+function buildVolume(v) {
+  const t = performance.now(), N = v.n, Cv = v.cell, BOHR = 0.529177210903, sc = T.sc;
+  const n = [N[0] * sc[0], N[1] * sc[1], N[2] * sc[2]];
+  const head = ["chucha volume", v.name, "    1 0.0 0.0 0.0"];
+  for (let a = 0; a < 3; a++) { const s = Cv[a].map(c => c / N[a] / BOHR); head.push(`${n[a]} ${s[0]} ${s[1]} ${s[2]}`); }
+  head.push("    1 0.0 0.0 0.0 0.0");
+  const body = new Array(n[0] * n[1] * n[2]), vals = v.values;
+  let p = 0;
+  for (let i = 0; i < n[0]; i++) { const bi = (i % N[0]) * N[1];
+    for (let j = 0; j < n[1]; j++) { const bj = (bi + j % N[1]) * N[2];
+      for (let k = 0; k < n[2]; k++) body[p++] = vals[bj + k % N[2]]; } }
+  v.vol = new $3Dmol.VolumeData(head.join("\n") + "\n" + body.join(" ") + "\n", "cube");
+  window.timing.volume_ms = performance.now() - t;
+}
+function clearIso(v) { (v.shapes || []).forEach(s => viewer.removeShape(s)); v.shapes = []; }
+function drawIso(v) {  // one surface at the level, or two at ±|level| for signed data
+  clearIso(v);
+  if (!v.show || !v.vol) return;
+  if (v.signed) {
+    v.shapes.push(viewer.addIsosurface(v.vol, {isoval: Math.abs(v.level), color: v.color, opacity: v.opacity}));
+    v.shapes.push(viewer.addIsosurface(v.vol, {isoval: -Math.abs(v.level), color: v.color2, opacity: v.opacity}));
+  } else v.shapes.push(viewer.addIsosurface(v.vol, {isoval: v.level, color: v.color, opacity: v.opacity}));
+}
+function setLevel(k, e) {
+  const v = T.volumes[k], x = parseFloat(String(e).replace(",", "."));
+  if (!isFinite(x)) { say_msg("level: not a number"); return; }
+  say_msg("");
+  v.level = v.signed ? Math.abs(x) : x;
+  const box = document.querySelector(`.layer[data-k="${k}"]`);
+  if (box) { box.querySelector(".levelnum").value = +v.level.toPrecision(5); box.querySelector("input.lvl").value = v.level; }
+  const t = performance.now(); drawIso(v); viewer.render(); window.timing.isosurface_ms = performance.now() - t;
+}
+function rebuildIso(v) { buildVolume(v); drawIso(v); renderLayers(); viewer.render(); }  // new values: new grid
+function renderLayers() {
+  $("isosec").classList.toggle("hidden", !T.volumes.length);
+  $("layers").innerHTML = T.volumes.map((v, k) => {
+    const pre = Object.entries(v.presets), chans = K.channelList(v.channels);
+    // directly: show/hide, name, level; folded (▸): channel, color(s), ±, opacity, presets, remove
+    return `<div class="layer" data-k="${k}">
+     <div class="row" style="margin-top:0"><input type="checkbox" class="show"${v.show ? " checked" : ""} title="show / hide">
+      <span class="lname" title="${esc(v.name)}">${esc(v.name)}</span>
+      <button class="exp more" title="color, opacity${pre.length ? ", presets" : ""}, remove">${v.open ? "▾" : "▸"}</button></div>
+     <div class="row"><span class="lab">Level</span>${v.signed ? '<span class="x" title="drawn at +level and −level">±</span>' : ""}<input class="levelnum" type="text" inputmode="decimal">
+      <span class="unit" title="${esc(v.label)}">${esc(v.label)}</span></div>
+     <input type="range" class="lvl" min="${v.min}" max="${v.max}" step="${(v.max - v.min) / 1000}">
+     <div class="subp${v.open ? "" : " hidden"}">
+      ${chans.length > 1 ? `<div class="orow"><span class="lab">Channel</span><select class="chan">${chans.map(c =>
+        `<option value="${c}"${c === v.channel ? " selected" : ""}>${K.CHANNEL_NAMES[c] || c}</option>`).join("")}</select></div>` : ""}
+      <div class="orow"><span class="lab">Color</span><input type="color" class="col" value="${v.color}" title="${v.signed ? "+level" : "color"}">
+       ${v.signed ? `<input type="color" class="col2" value="${v.color2}" title="−level">` : ""}
+       <label class="chk" style="margin-left:auto" title="Draw +level and −level in two colors (for signed data: magnetization, density differences)"><input type="checkbox" class="sgn"${v.signed ? " checked" : ""}> Both signs</label></div>
+      <div class="orow"><span class="lab">Opacity</span><input type="range" class="iop" min="0.1" max="1" step="0.05" value="${v.opacity}"><span class="unit iopv" style="width:30px">${v.opacity.toFixed(2)}</span></div>
+      ${pre.length ? `<div class="orow"><span class="lab">Presets</span><span class="seg">${pre.map(([n, x]) =>
+        `<button data-x="${x}" title="${esc(n)} = ${x}">${esc(n)}</button>`).join("")}</span></div>
+       <div class="pre">${pre.map(([n, x]) => `${esc(n)} <b>${fmt(x)}</b>`).join(" · ")}</div>` : ""}
+      <div class="row" style="justify-content:flex-end;margin-bottom:0"><button class="btn rm" title="remove this isosurface">Remove</button></div>
+     </div>
+    </div>`;
+  }).join("");
+  document.querySelectorAll(".layer").forEach(box => {
+    const k = +box.dataset.k, v = T.volumes[k], num = box.querySelector(".levelnum"), sl = box.querySelector("input.lvl");
+    num.value = +v.level.toPrecision(5); sl.value = v.level;
+    sl.oninput = () => setLevel(k, sl.value);
+    const op = box.querySelector("input.iop");
+    op.oninput = () => { v.opacity = +op.value; box.querySelector(".iopv").textContent = v.opacity.toFixed(2); drawIso(v); viewer.render(); };
+    num.onchange = () => setLevel(k, num.value);
+    num.onkeydown = e => { if (e.key === "Enter") setLevel(k, num.value); };
+    box.querySelectorAll("button[data-x]").forEach(b => b.onclick = () => setLevel(k, b.dataset.x));
+    box.querySelector(".show").onchange = e => { v.show = e.target.checked; drawIso(v); drawCells(); viewer.render(); };
+    box.querySelector(".col").oninput = e => { v.color = e.target.value; drawIso(v); drawCells(); viewer.render(); };
+    const c2 = box.querySelector(".col2"); if (c2) c2.oninput = () => { v.color2 = c2.value; drawIso(v); viewer.render(); };
+    box.querySelector(".sgn").onchange = e => { setChannel(v, v.channel, undefined, e.target.checked); rebuildIso(v); };
+    const ch = box.querySelector(".chan"); if (ch) ch.onchange = () => { setChannel(v, ch.value); rebuildIso(v); };
+    box.querySelector(".more").onclick = () => {
+      v.open = !v.open; box.querySelector(".subp").classList.toggle("hidden", !v.open);
+      box.querySelector(".more").textContent = v.open ? "▾" : "▸";
+    };
+    box.querySelector(".rm").onclick = () => { clearIso(v); T.volumes.splice(k, 1); renderLayers(); drawCells(); viewer.render(); };
+  });
+}
+
+// ------------------------------------------------------------------ structure of the current frame
+function atomList() {
+  const f = frame(), S = needScene() ? sceneOf(f) : {images: []}, at = [], im = [], mk = [], sc = T.sc, seen = new Set();
+  copies().forEach(c => {
+    const Tv = shift(...c);
+    f.xyz.forEach((p, i) => at.push({elem: f.symbols[i], xyz: add3(p, Tv), idx: i, cellidx: c}));
+    if (periodic) T.markers.forEach((m, i) => mk.push({elem: "He", xyz: add3(m.xyz, Tv), label: m.label, idx: i, cellidx: c}));
+    S.images.forEach(a => {  // keep only bonded atoms outside the whole supercell (inside ones are real atoms)
+      const fr = add3(a.frac, c);
+      if (fr.some((x, d) => x < -1e-3 || x > sc[d] - 1e-3)) {
+        const xyz = add3(a.xyz, Tv), k = K.rkey(xyz);
+        if (!seen.has(k)) { seen.add(k); im.push({elem: f.symbols[a.idx], xyz, idx: a.idx, cellidx: c}); }
+      }
+    });
+  });
+  bound = {bonds: [], polys: []};
+  if (periodic) {  // atoms on the boundary of the box are always repeated on the opposite side(s)
+    const B = boundaryAtoms(f, sc, seen);
+    B.forEach(a => im.push(a));
+    if (B.length && needScene()) boundaryScene(f, S, B, seen, im);
+  }
+  if (!periodic) T.markers.forEach((m, i) => mk.push({elem: "He", xyz: m.xyz, label: m.label, idx: i, cellidx: [0, 0, 0]}));
+  return {at, im, mk};
+}
+// boundary copies are drawn like atoms inside the box: their polyhedra, their bonds and the atoms those reach
+let bound = {bonds: [], polys: []};
+const dkey = v => v.map(x => (Math.round(x * 1000) / 1000 + 0).toFixed(3)).join(",");  // no "-0.000"
+function boundaryScene(f, S, B, seen, im) {
+  const adj = f.xyz.map(() => []), polyOf = new Map(S.polyhedra.map(pl => [pl.idx, pl]));
+  const own = f.xyz.map(() => new Set());  // bonds an atom inside the box draws itself: [i, j, p] goes from i (rules are one-way)
+  S.bonds.forEach(([i, j, p]) => {
+    const d = sub3(p, f.xyz[i]);
+    adj[i].push({o: j, d}); adj[j].push({o: i, d: d.map(x => -x)}); own[i].add(dkey(d));
+  });
+  const real = new Set();
+  copies().forEach(c => { const Tv = shift(...c); f.xyz.forEach(p => real.add(K.rkey(add3(p, Tv)))); });
+  const drawn = new Set();
+  B.forEach(a => {
+    const pl = polyOf.get(a.idx); if (pl) bound.polys.push({pl, c: a.cc});
+    const ka = K.rkey(a.xyz);
+    adj[a.idx].forEach(({o, d}) => {
+      const b = add3(a.xyz, d), kb = K.rkey(b);
+      if ((real.has(kb) && own[o].has(dkey(d.map(x => -x)))) || drawn.has(kb + "/" + ka) || drawn.has(ka + "/" + kb)) return;
+      drawn.add(ka + "/" + kb);
+      bound.bonds.push({a: a.xyz, b, i: a.idx, j: o, c: a.cellidx});
+      if (!seen.has(kb)) { seen.add(kb); im.push({elem: f.symbols[o], xyz: b, idx: o, cellidx: a.cellidx}); }
+    });
+  });
+}
+// atoms on a face, edge or corner of the (super)cell, repeated on the opposite side(s), as VESTA draws them
+const BOUND_TOL = 1e-3;
+function boundaryAtoms(f, sc, seen) {
+  const M = K.inv3(f.cell), tol = BOUND_TOL, out = [];
+  f.xyz.forEach((p, i) => {
+    const u = K.toFrac(p, M);
+    copies().forEach(c => {
+      const opts = u.map((x, d) => { const t = x + c[d], o = [0];  // a copy on the low face also goes on the high one, and back
+        if (Math.abs(t) < tol) o.push(sc[d]); if (Math.abs(t - sc[d]) < tol) o.push(-sc[d]); return o; });
+      for (const a of opts[0]) for (const b of opts[1]) for (const g of opts[2]) {
+        if (!a && !b && !g) continue;
+        const cc = [c[0] + a, c[1] + b, c[2] + g], xyz = add3(p, shift(...cc)), k = K.rkey(xyz);
+        if (!seen.has(k)) { seen.add(k); out.push({elem: f.symbols[i], xyz, idx: i, cellidx: c, cc}); }
+      }
+    });
+  });
+  return out;
+}
+function addModel(list, tag) {
+  const txt = list.length + "\n\n" + list.map(a => `${a.elem} ${a.xyz.join(" ")}`).join("\n");
+  // chucha draws its own bonds (shapes); 3Dmol's bond search on parse took 2.2 s for a 12k-atom overlay
+  const m = viewer.addModel(txt, "xyz", {assignBonds: false});
+  m.selectedAtoms({}).forEach((a, i) => { a.info = list[i]; a.tag = tag; });
+  return m;
+}
+const elemStyle = e => { const c = TABLES.colors[e] || ["#999999", 1.0]; return {color: (T && T.colors[e]) || c[0], radius: 0.4 * c[1]}; };
+function styleAtoms() {
+  const show = $("t_atoms").checked;
+  models.at.setStyle({}, {}); models.im.setStyle({}, {});
+  if (show) new Set(frame().symbols).forEach(e => {
+    if (T.hidden.has(e)) return;
+    const s = elemStyle(e);
+    models.at.setStyle({elem: e}, {sphere: {radius: s.radius, color: s.color}});
+    models.im.setStyle({elem: e}, {sphere: {radius: s.radius, color: s.color}});
+  });
+  styleGhost();
+}
+function styleMarkers() { models.mk.setStyle({}, $("t_mk").checked ? {sphere: {radius: 0.22, color: "#00a3ff"}} : {}); }
+// a shape holding many cylinders, each in its own color (3Dmol paints a whole shape in its color unless it has none)
+function multiShape() { const s = viewer.addShape({}); delete s.color; return s; }
+function clearShapes(key) { shapes[key].forEach(s => viewer.removeShape(s)); shapes[key] = []; }
+function drawCells() {  // the structure's cell, and the cell of each shown isosurface whose grid lies on another cell
+  clearShapes("cell");
+  if (!periodic || !$("t_cell").checked) return;
+  const E = [[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]];
+  const s = multiShape();
+  const box = (L, color, r) => {
+    const sh = (i, j, k) => [0, 1, 2].map(c => i * L[0][c] + j * L[1][c] + k * L[2][c]);
+    const corner = (c, b) => add3(sh(...c), sh((b >> 2) & 1, (b >> 1) & 1, b & 1));
+    copies().forEach(c => E.forEach(([p, q]) => s.addCylinder({start: P(corner(c, p)), end: P(corner(c, q)), radius: r, color, fromCap: 1, toCap: 1})));
+  };
+  box(A, $("t_dark").checked ? "#c8c8c8" : "#202020", 0.012);
+  const drawn = [A];
+  T.volumes.forEach(v => {
+    if (!v.show || drawn.some(L => sameCell(L, v.cell))) return;
+    drawn.push(v.cell); box(v.cell, v.color, 0.018);
+  });
+  shapes.cell.push(s);
+}
+// ---- meshes: thousands of cylinders or faces as a few large 3Dmol shapes (one draw call each, built from arrays);
+// chunks stay under 60k vertices (3Dmol splits bigger ones itself and then loses per-vertex colors)
+const MESH_MAX = 60000, rgbCache = new Map();
+function rgb(hex) {
+  let c = rgbCache.get(hex);
+  if (!c) { const n = parseInt(hex.slice(1), 16); c = {r: (n >> 16 & 255) / 255, g: (n >> 8 & 255) / 255, b: (n & 255) / 255}; rgbCache.set(hex, c); }
+  return c;
+}
+function mesh(spec = {}) {
+  const shape = viewer.addShape(spec); delete shape.color;
+  let V = [], N = [], C = [], F = [];
+  const flush = () => { if (F.length) shape.addCustom({vertexArr: V, normalArr: N, colorArr: C, faceArr: F}); V = []; N = []; C = []; F = []; };
+  const ring = {};
+  const trig = n => ring[n] || (ring[n] = Array.from({length: n}, (_, k) => [Math.cos(2 * Math.PI * k / n), Math.sin(2 * Math.PI * k / n)]));
+  return {
+    shape,
+    cylinder(a, b, r, color, segs, capA, capB) {  // open tube from a to b, optional flat caps
+      if (V.length + 2 * segs + 2 * (segs + 1) > MESH_MAX) flush();
+      const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(...u); if (L < 1e-9) return;
+      u[0] /= L; u[1] /= L; u[2] /= L;
+      const t = Math.abs(u[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+      let v1 = [u[1] * t[2] - u[2] * t[1], u[2] * t[0] - u[0] * t[2], u[0] * t[1] - u[1] * t[0]];
+      const l1 = Math.hypot(...v1); v1 = v1.map(x => x / l1);
+      const v2 = [u[1] * v1[2] - u[2] * v1[1], u[2] * v1[0] - u[0] * v1[2], u[0] * v1[1] - u[1] * v1[0]];
+      const col = rgb(color), o = V.length, cs = trig(segs);
+      for (const [c0, s0] of cs) {
+        const n = [c0 * v1[0] + s0 * v2[0], c0 * v1[1] + s0 * v2[1], c0 * v1[2] + s0 * v2[2]];
+        V.push({x: a[0] + r * n[0], y: a[1] + r * n[1], z: a[2] + r * n[2]}, {x: b[0] + r * n[0], y: b[1] + r * n[1], z: b[2] + r * n[2]});
+        N.push({x: n[0], y: n[1], z: n[2]}, {x: n[0], y: n[1], z: n[2]}); C.push(col, col);
+      }
+      for (let k = 0; k < segs; k++) { const i = o + 2 * k, j = o + 2 * ((k + 1) % segs); F.push(i, j, i + 1, j, j + 1, i + 1); }
+      const cap = (p, sign, side) => {
+        const c0 = V.length, nn = {x: sign * u[0], y: sign * u[1], z: sign * u[2]};
+        V.push({x: p[0], y: p[1], z: p[2]}); N.push(nn); C.push(col);
+        for (let k = 0; k < segs; k++) { V.push(V[o + 2 * k + side]); N.push(nn); C.push(col); }
+        for (let k = 0; k < segs; k++) F.push(c0, c0 + 1 + k, c0 + 1 + (k + 1) % segs);
+      };
+      if (capA) cap(a, -1, 0);
+      if (capB) cap(b, 1, 1);
+    },
+    faces(verts, norms, faces, color, shift) {  // a polyhedron: flat triangles, moved by `shift`
+      if (V.length + verts.length > MESH_MAX) flush();
+      const col = rgb(color), o = V.length;
+      verts.forEach(v => V.push({x: v[0] + shift[0], y: v[1] + shift[1], z: v[2] + shift[2]}));
+      norms.forEach(n => N.push({x: n[0], y: n[1], z: n[2]}));
+      verts.forEach(() => C.push(col));
+      faces.forEach(i => F.push(o + i));
+    },
+    done() { flush(); return shape; },
+  };
+}
+function polyPlaces() {  // every drawn polyhedron {pl, c}: one per cell of the supercell, then those of boundary copies
+  const S = sceneOf(frame()), out = [];
+  copies().forEach(c => S.polyhedra.forEach(pl => out.push({pl, c})));
+  return out.concat(bound.polys);
+}
+function drawPolyhedra() {  // one mesh per center element (its color and the opacity), one for all edges
+  clearShapes("poly");
+  if (!$("t_poly").checked) return;
+  const byElem = {}, edges = mesh();
+  polyPlaces().forEach(({pl: p, c}) => { const Tv = shift(...c);
+    if (!polyVisible(p.elem)) return;
+    const m = byElem[p.elem] || (byElem[p.elem] = mesh({opacity: T.polyOpacity}));
+    m.faces(p.vertices, p.normals, p.faces, T.polyColors[p.elem] || elemStyle(p.elem).color, Tv);  // VESTA: the center's color
+    p.edges.forEach(([a, b]) => edges.cylinder(add3(a, Tv), add3(b, Tv), 0.008, "#a0a0a0", 5, false, false));
+  });
+  Object.values(byElem).forEach(m => shapes.poly.push(m.done()));
+  shapes.poly.push(edges.done());
+}
+const BOND_R = 0.1;  // bond radius (Å)
+let bondSegs = [];  // drawn bonds {a, b, i, j, c}, for picking
+function drawBonds() {  // ball-and-stick, each bond split in the two atom colors; one mesh for all
+  clearShapes("bonds"); bondSegs = [];
+  if (!$("t_bonds").checked) return;
+  const f = frame(), S = sceneOf(f), m = mesh();
+  const n = S.bonds.length * T.sc[0] * T.sc[1] * T.sc[2], segs = n > 20000 ? 6 : n > 4000 ? 8 : 12;  // fewer sides for many bonds
+  copies().forEach(c => { const Tv = shift(...c);
+    S.bonds.forEach(([i, j, p]) => {
+      if (T.hidden.has(f.symbols[i]) || T.hidden.has(f.symbols[j]) || !bondVisible(f.symbols[i], f.symbols[j])) return;
+      const a = add3(f.xyz[i], Tv), b = add3(p, Tv), mid = [(a[0]+b[0])/2, (a[1]+b[1])/2, (a[2]+b[2])/2];
+      bondSegs.push({a, b, i, j, c});
+      m.cylinder(a, mid, BOND_R, elemStyle(f.symbols[i]).color, segs, true, false);
+      m.cylinder(mid, b, BOND_R, elemStyle(f.symbols[j]).color, segs, false, true);
+    });
+  });
+  bound.bonds.forEach(sg => {
+    const {a, b, i, j} = sg;
+    if (T.hidden.has(f.symbols[i]) || T.hidden.has(f.symbols[j]) || !bondVisible(f.symbols[i], f.symbols[j])) return;
+    const mid = [(a[0]+b[0])/2, (a[1]+b[1])/2, (a[2]+b[2])/2];
+    bondSegs.push(sg);
+    m.cylinder(a, mid, BOND_R, elemStyle(f.symbols[i]).color, segs, true, false);
+    m.cylinder(mid, b, BOND_R, elemStyle(f.symbols[j]).color, segs, false, true);
+  });
+  shapes.bonds.push(m.done());
+}
+// ---- "show all frames": every k-th frame as small translucent atoms (no bonds or polyhedra), within a budget
+function ghostPlan() {
+  const n = T.frames.length, per = Math.max(1, T.frames[0].symbols.length) * T.sc[0] * T.sc[1] * T.sc[2];
+  const step = Math.max(1, Math.ceil(n / GHOST_FRAMES), Math.ceil(n * per / GHOST_ATOMS));
+  return {step, count: Math.ceil(n / step)};
+}
+function dropGhost() { if (ghost) { viewer.removeModel(ghost); ghost = null; } }
+function buildGhost() {
+  dropGhost();
+  if (!$("t_all").checked || T.frames.length < 2) { $("allnote").textContent = ""; return; }
+  const {step, count} = ghostPlan(), list = [];
+  for (let k = 0; k < T.frames.length; k += step) {
+    const f = T.frames[k];
+    copies().forEach(c => { const Tv = shift(...c);
+      f.xyz.forEach((p, i) => list.push({elem: f.symbols[i], xyz: add3(p, Tv), idx: i, cellidx: c, frame: k})); });
+  }
+  ghost = addModel(list, "ghost");
+  $("allnote").textContent = step > 1 ? `every ${step}th · ${count} frames` : `${count} frames`;
+  styleGhost();   // not hoverable: hover over 10^4 overlay atoms costs more than it tells
+}
+function styleGhost() {
+  if (!ghost) return;
+  ghost.setStyle({}, {});
+  if (!$("t_atoms").checked) return;
+  [...new Set(T.frames.flatMap(f => f.symbols))].forEach(e => {
+    if (T.hidden.has(e)) return;
+    const s = elemStyle(e);
+    ghost.setStyle({elem: e}, {sphere: {radius: 0.6 * s.radius, color: s.color, opacity: 0.85}});
+  });
+}
+function buildStructure() {
+  const t = performance.now();
+  clearMarks();
+  ["at", "im", "mk", "box"].forEach(k => { if (models[k]) viewer.removeModel(models[k]); models[k] = null; });
+  viewer.removeAllLabels();
+  ["cell", "poly", "bonds"].forEach(clearShapes);
+  if (!T.frames.length) return;
+  const L = atomList();
+  models.at = addModel(L.at, "atom"); models.im = addModel(L.im, "image"); models.mk = addModel(L.mk, "marker");
+  const sc = T.sc, box = [0, 1, 2, 3, 4, 5, 6, 7].map(b => ({elem: "H", xyz: add3(O, shift(sc[0] * ((b >> 2) & 1), sc[1] * ((b >> 1) & 1), sc[2] * (b & 1)))}));
+  models.box = addModel(box, "box"); models.box.setStyle({}, {});
+  builtWithScene = needScene();
+  styleAtoms(); styleMarkers(); drawCells(); drawPolyhedra(); drawBonds(); renderElems();
+  // only the structure's own atoms: touching the "show all frames" overlay here made 3Dmol rebuild its whole
+  // mesh on every frame step (tens of MB of garbage per step, ~10x slower playback)
+  viewer.setHoverable({model: [models.at, models.im, models.mk].filter(Boolean)}, true, hoverOn, hoverOff);
+  window.timing.structure_ms = performance.now() - t;
+}
+function buildVolumes() { T.volumes.forEach(v => { buildVolume(v); drawIso(v); }); }
+function build(recenter = true) {  // everything of the current tab for its supercell
+  const t = performance.now();
+  if (T.frames.length) setCell();
+  buildStructure(); buildVolumes(); buildGhost();
+  if (T.frames.length && recenter) { viewer.zoomTo({model: models.box}); viewer.zoom(0.8); }
+  if (T.frames.length) applyCam(); else drawAxes();
+  viewer.render();
+  window.timing.build_ms = performance.now() - t;
+}
+function setFrame(k) {  // same view, same supercell; structure of frame k
+  const t = performance.now();
+  T.fi = ((k % T.frames.length) + T.frames.length) % T.frames.length;
+  // symmetry of the new frame once stepping pauses: done at once it cost 0.3 s per step for 768 atoms
+  setCell(); buildStructure(); updateFrameUI(); setTitle(true); applyCam(); viewer.render();
+  window.timing.frame_ms = performance.now() - t;
+}
+
+// ------------------------------------------------------------------ rotation
+// Free: every mouse move turns the scene about the screen axis perpendicular to the drag. Locked: dragging
+// left/right spins about a chosen crystal axis (a, b, c or [u v w]). Wheel zooms, ctrl/middle-drag pans.
+const norm3 = v => { const n = Math.hypot(...v); return v.map(x => x / n); };
+const dot3 = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const cross3 = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+function qmul(a, b) {  // [x, y, z, w]
+  return [a[3]*b[0] + a[0]*b[3] + a[1]*b[2] - a[2]*b[1], a[3]*b[1] - a[0]*b[2] + a[1]*b[3] + a[2]*b[0],
+          a[3]*b[2] + a[0]*b[1] - a[1]*b[0] + a[2]*b[3], a[3]*b[3] - a[0]*b[0] - a[1]*b[1] - a[2]*b[2]];
+}
+const qnorm = q => { const n = Math.hypot(...q); return q.map(x => x / n); };
+function qaxis(axis, deg) {
+  const n = Math.hypot(...axis);
+  if (!(n > 1e-12) || !isFinite(deg)) return [0, 0, 0, 1];
+  const h = deg * Math.PI / 360, s = Math.sin(h) / n;
+  return [axis[0]*s, axis[1]*s, axis[2]*s, Math.cos(h)];
+}
+function qmat(r) {  // rotation matrix (rows) -> quaternion
+  const t = r[0][0] + r[1][1] + r[2][2];
+  if (t > 0) { const s = 0.5 / Math.sqrt(t + 1); return [(r[2][1]-r[1][2])*s, (r[0][2]-r[2][0])*s, (r[1][0]-r[0][1])*s, 0.25 / s]; }
+  if (r[0][0] > r[1][1] && r[0][0] > r[2][2]) { const s = 2 * Math.sqrt(1 + r[0][0] - r[1][1] - r[2][2]);
+    return [0.25 * s, (r[0][1]+r[1][0]) / s, (r[0][2]+r[2][0]) / s, (r[2][1]-r[1][2]) / s]; }
+  if (r[1][1] > r[2][2]) { const s = 2 * Math.sqrt(1 + r[1][1] - r[0][0] - r[2][2]);
+    return [(r[0][1]+r[1][0]) / s, 0.25 * s, (r[1][2]+r[2][1]) / s, (r[0][2]-r[2][0]) / s]; }
+  const s = 2 * Math.sqrt(1 + r[2][2] - r[0][0] - r[1][1]);
+  return [(r[0][2]+r[2][0]) / s, (r[1][2]+r[2][1]) / s, 0.25 * s, (r[1][0]-r[0][1]) / s];
+}
+function lookAlong(dir, up) {  // orientation with dir pointing at the viewer and up vertical on screen
+  const ez = norm3(dir);
+  let u = up.map((x, i) => x - dot3(up, ez) * ez[i]);
+  if (Math.hypot(...u) < 1e-6) u = [0, 1, 0];
+  const ey = norm3(u), ex = cross3(ey, ez);
+  return qmat([ex, ey, ez]);
+}
+const homeQuat = () => qmul(qmul(qaxis([1, 0, 0], 20), qaxis([0, 1, 0], -30)), lookAlong(cross3(A[0], A[2]).map(x => -x), A[2]));
+function applyCam() {
+  const v = viewer.getView(), q = T.quat; v[4] = q[0]; v[5] = q[1]; v[6] = q[2]; v[7] = q[3];
+  viewer.setView(v);
+  drawAxes();
+}
+function rotv(q, v) {  // rotate vector v by unit quaternion q = [x, y, z, w]
+  const [x, y, z, w] = q, t = [2 * (y*v[2] - z*v[1]), 2 * (z*v[0] - x*v[2]), 2 * (x*v[1] - y*v[0])];
+  return [v[0] + w*t[0] + y*t[2] - z*t[1], v[1] + w*t[1] + z*t[0] - x*t[2], v[2] + w*t[2] + x*t[1] - y*t[0]];
+}
+const AXCOL = ["#ff5252", "#4caf50", "#448aff"];
+function drawAxes() {  // a, b, c as the current rotation shows them; click a label to look along it
+  const svg = $("axes"), on = $("t_axes").checked && T && T.frames.length > 0;
+  svg.style.display = on ? "" : "none";
+  if (!on) return;
+  const L = 38, names = periodic ? "abc" : "xyz";
+  const ax = [0, 1, 2].map(i => ({i, s: rotv(T.quat, norm3(A[i]))})).sort((p, q) => p.s[2] - q.s[2]);  // back to front
+  svg.innerHTML = ax.map(({i, s}) => {
+    const x = L * s[0], y = -L * s[1], op = s[2] < -0.2 ? 0.55 : 1;
+    return `<g opacity="${op}"><line x1="0" y1="0" x2="${x}" y2="${y}" stroke="${AXCOL[i]}" stroke-width="2.5" stroke-linecap="round"/>` +
+      `<text x="${1.3 * x}" y="${1.3 * y}" fill="${AXCOL[i]}" data-i="${i}"><title>look along ${names[i]}</title>${names[i]}</text></g>`;
+  }).join("") + '<circle r="2.5" fill="#9aa0a6"/>';
+  svg.querySelectorAll("text").forEach(t => t.onclick = () => viewAlong(A[+t.dataset.i]));
+}
+function viewAlong(axis) { if (!T.frames.length) return; T.quat = lookAlong(axis, Math.abs(dot3(norm3(axis), norm3(A[2]))) > 0.99 ? A[1] : A[2]); applyCam(); }
+function lockedAxis() {
+  const m = $("axis").value;
+  if (m === "free") return null;
+  if (m !== "uvw") return A["abc".indexOf(m)];
+  const w = $("uvw").value.trim().split(/[\s,]+/).map(Number);
+  if (w.length !== 3 || w.some(x => !isFinite(x)) || w.every(x => x === 0)) { say_msg("[u v w]: three numbers"); return null; }
+  say_msg("");
+  return [0, 1, 2].map(c => w[0] * A[0][c] + w[1] * A[1][c] + w[2] * A[2][c]);
+}
+$("axis").onchange = () => { $("uvw").style.display = $("axis").value === "uvw" ? "" : "none"; };
+(function rotation() {
+  // The drag is ours from mousedown to mouseup, whatever e.buttons says (trackpads often report 0
+  // during a drag). Once the pointer moves, 3Dmol's own drag state is cleared, so its trackball
+  // can never take over, and the drag is not a click.
+  const el = $("viewer"); let last = null, moved = false;
+  const end = () => { last = null; moved = false; };
+  el.addEventListener("mousedown", e => {
+    if (e.button === 0 && !e.ctrlKey && !e.shiftKey && !e.metaKey) { last = {x: e.clientX, y: e.clientY}; moved = false; }
+  }, true);
+  window.addEventListener("mousemove", e => {
+    if (!last) return;
+    e.stopPropagation();
+    const dx = e.clientX - last.x, dy = e.clientY - last.y;
+    if (!moved && Math.hypot(dx, dy) < 3) return;
+    moved = true; viewer.isDragging = false;
+    if (!dx && !dy) return;
+    last = {x: e.clientX, y: e.clientY};
+    const k = 0.4, axis = lockedAxis();
+    const next = axis ? qnorm(qmul(T.quat, qaxis(axis, k * dx))) : qnorm(qmul(qaxis([dy, dx, 0], k * Math.hypot(dx, dy)), T.quat));
+    if (!next.every(isFinite)) return;
+    T.quat = next;
+    applyCam();
+  }, true);
+  window.addEventListener("mouseup", end, true);
+  window.addEventListener("blur", end);
+  document.addEventListener("mouseleave", end);
+})();
+
+// ------------------------------------------------------------------ hover and click
+function atomName(a) {
+  const i = a.info, c = i.cellidx, tag = (c[0] || c[1] || c[2]) ? `[${c.join(",")}]` : "";
+  if (a.tag === "marker") return `${i.label}${tag}`;
+  if (a.tag === "ghost") { const f = T.frames[i.frame]; return `${(f.labels && f.labels[i.idx]) || f.symbols[i.idx] + i.idx}${tag} @${i.frame + 1}`; }
+  return `${label(i.idx)}${a.tag === "image" ? "'" : ""}${tag}`;
+}
+const fnum = x => typeof x === "number" ? (Number.isInteger(x) ? String(x) : String(+x.toPrecision(4))) : String(x);
+const fval = x => Array.isArray(x) ? `[${x.map(fnum).join(", ")}]` : fnum(x);
+function siteInfo(idx, f = frame()) {  // per-atom data: [suffix like " (+2)", ["name value", ...]]
+  const d = f.data || {}, q = d.oxi_states ? d.oxi_states[idx] : undefined;
+  const lines = Object.entries(d).filter(([k]) => k !== "oxi_states").map(([k, v]) => `${k} ${fval(v[idx])}`);
+  return [q ? ` (${q > 0 ? "+" : ""}${fnum(q)})` : "", lines];
+}
+function describe(a) {
+  if (a.tag === "marker") return atomName(a);
+  const [q, lines] = siteInfo(a.info.idx, a.tag === "ghost" ? T.frames[a.info.frame] : frame()), r = [a.x, a.y, a.z];
+  const pos = periodic ? `frac ${K.toFrac(r, Ainv).map(v => v.toFixed(3)).join(" ")}` : `xyz ${r.map(v => v.toFixed(2)).join(" ")}`;
+  return `${atomName(a)}${q}  ${pos}${lines.length ? "  " + lines.join(" · ") : ""}`;
+}
+function hoverOn(a, v) { if (a.tag !== "box" && !a.label) a.label = v.addLabel(describe(a), {position: a, backgroundOpacity: 0.75, fontSize: 12}); }
+function hoverOff(a, v) { if (a.label) { v.removeLabel(a.label); delete a.label; } }
+
+const HILITE = "#ffd600";  // selection color (atoms, polyhedra, bonds)
+function clickBond(best) {  // highlight a bond and log its length
+  hilite.forEach(s => viewer.removeShape(s)); hilite = []; $("poly").innerHTML = "";
+  hilite.push(viewer.addCylinder({start: P(best.a), end: P(best.b), radius: BOND_R + 0.05, color: HILITE, fromCap: 1, toCap: 1, opacity: 0.9}));
+  const d = Math.hypot(best.b[0] - best.a[0], best.b[1] - best.a[1], best.b[2] - best.a[2]);
+  const tag = c => (c[0] || c[1] || c[2]) ? `[${c.join(",")}]` : "";
+  const partner = (periodic && K.toFrac(best.b, Ainv).some((v, k) => v < -1e-3 || v > T.sc[k] - 1e-3)) ? "'" : "";
+  say(`bond ${label(best.i)}${tag(best.c)}–${label(best.j)}${partner} = ${fmt(d)} Å`);
+  viewer.render();
+}
+function showPolyhedron(p, c) {  // neighbors, bond lengths, distortion, volume
+  hilite.forEach(s => viewer.removeShape(s)); hilite = [];
+  const Tv = shift(...c), s = multiShape();
+  hilite.push(viewer.addCustom({vertexArr: p.vertices.map(v => P(add3(v, Tv))), normalArr: p.normals.map(P), faceArr: p.faces,
+                                color: HILITE, opacity: 0.55}));
+  p.edges.forEach(([a, b]) => s.addCylinder({start: P(add3(a, Tv)), end: P(add3(b, Tv)), radius: 0.025, color: HILITE, fromCap: 1, toCap: 1}));
+  hilite.push(s);
+  const tag = (c[0] || c[1] || c[2]) ? `[${c.join(",")}]` : "";
+  const [q] = siteInfo(p.idx);
+  const rows = p.ligands.map(l => {
+    const cellOf = add3(l.image, c), img = cellOf.some(x => x) ? ` [${cellOf.join(",")}]` : "";
+    return `<tr><td>${esc(label(l.idx))}${img}</td><td class="r">${fmt(l.d)} Å</td></tr>`;
+  }).join("");
+  $("poly").innerHTML = `<div class="ph">${esc(label(p.idx))}${tag}${q} · CN ${p.ligands.length}</div>` +
+    `<div class="pm">⟨d⟩ ${fmt(p.d_mean)} Å · distortion ${p.distortion.toFixed(4)} · V ${fmt(p.volume)} Å³</div>` +
+    `<table>${rows}</table>`;
+  viewer.render();
+}
+const vsub = (a, b) => [a.x - b.x, a.y - b.y, a.z - b.z];
+const vnorm = v => Math.hypot(...v);
+const f3 = v => v.map(x => x.toFixed(3).padStart(7)).join("");
+// one click: info + highlight; double-click two atoms: distance; triple-click three atoms: angle
+const CLICK_MS = 300;
+let clickAtom = null, clickCount = 0, clickTimer = null, dpicks = [], apicks = [];
+let tool = null;  // "d" (distance: 2 clicks) or "a" (angle: 3 clicks), or null
+function setTool(t) {
+  tool = t; dpicks = []; apicks = [];
+  $("tool_d").classList.toggle("on", t === "d"); $("tool_a").classList.toggle("on", t === "a");
+  document.body.classList.toggle("measuring", !!t);
+}
+$("tool_d").onclick = () => setTool(tool === "d" ? null : "d");
+$("tool_a").onclick = () => setTool(tool === "a" ? null : "a");
+// every left click (not a drag): the front-most atom, bond or polyhedron under the pointer, found by screen projection
+(function clicks() {
+  const el = $("viewer"); let down = null;
+  el.addEventListener("mousedown", e => { down = e.button === 0 ? {x: e.clientX, y: e.clientY} : null; }, true);
+  el.addEventListener("mouseup", e => {
+    const d = down; down = null;
+    if (!d || e.button !== 0 || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4 || !T.frames.length) return;
+    const hit = pickAt(e.clientX, e.clientY);
+    if (!hit) return;
+    if (hit.kind === "atom") onClick(hit.atom);
+    else if (hit.kind === "bond") clickBond(hit.bond);
+    else if (hit.kind === "poly") showPolyhedron(hit.poly, hit.cell);
+  }, true);
+})();
+function onClick(a) {
+  if (a.tag === "box") return;
+  if (tool) { resolveClick(a, tool === "d" ? 2 : 3); return; }
+  clickCount = a === clickAtom ? clickCount + 1 : 1;
+  clickAtom = a;
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => { const n = clickCount; clickAtom = null; clickCount = 0; resolveClick(a, Math.min(n, 3)); }, CLICK_MS);
+}
+const say = t => { $("out").textContent += t + "\n"; $("out").scrollTop = $("out").scrollHeight; };
+const C = a => ({x: a.x, y: a.y, z: a.z});
+function resolveClick(a, n) {
+  const v = viewer;
+  if (n === 1) {
+    if (selMark) v.removeShape(selMark);
+    selMark = v.addSphere({center: C(a), radius: 0.45, color: "#ffd600", opacity: 0.55});
+    const r = [a.x, a.y, a.z], pos = `${periodic ? `frac${f3(K.toFrac(r, Ainv))}\n  ` : ""}cart${f3(r)} Å`;
+    if (a.tag === "marker") say(`${atomName(a)}\n  ${pos}`);
+    else { const [q, lines] = siteInfo(a.info.idx, a.tag === "ghost" ? T.frames[a.info.frame] : frame());
+      say(`${atomName(a)}${q}${a.tag === "image" ? " (image)" : ""}\n  ${pos}` + lines.map(l => "\n  " + l).join("")); }
+  } else if (n === 2) {
+    dpicks.push(a);
+    marks.push(v.addSphere({center: C(a), radius: 0.4, color: "#00c853", opacity: 0.5}));
+    if (dpicks.length === 2) {
+      const [p, q] = dpicks, d = vnorm(vsub(p, q));
+      marks.push(v.addCylinder({start: C(p), end: C(q), radius: 0.04, dashed: true, color: "#00c853"}));
+      marks.push(v.addLabel(`${fmt(d)} Å`, {position: {x:(p.x+q.x)/2, y:(p.y+q.y)/2, z:(p.z+q.z)/2}, backgroundColor: "#00c853", fontSize: 12}));
+      say(`d(${atomName(p)}–${atomName(q)}) = ${fmt(d)} Å`);
+      dpicks = [];
+    } else say(`distance: ${atomName(a)} – … (${tool ? "click" : "double-click"} the 2nd atom)`);
+  } else {
+    apicks.push(a);
+    marks.push(v.addSphere({center: C(a), radius: 0.4, color: "#2979ff", opacity: 0.5}));
+    if (apicks.length === 3) {
+      const [a1, b1, c1] = apicks, u = vsub(a1, b1), w = vsub(c1, b1);
+      const ang = Math.acos(Math.max(-1, Math.min(1, (u[0]*w[0] + u[1]*w[1] + u[2]*w[2]) / (vnorm(u) * vnorm(w))))) * 180 / Math.PI;
+      [[a1, b1], [b1, c1]].forEach(([p, q]) => marks.push(v.addCylinder({start: C(p), end: C(q), radius: 0.04, dashed: true, color: "#2979ff"})));
+      marks.push(v.addLabel(`${ang.toFixed(1)}°`, {position: C(b1), backgroundColor: "#2979ff", fontSize: 12}));
+      say(`∠(${atomName(a1)}–${atomName(b1)}–${atomName(c1)}) = ${ang.toFixed(1)}°`);
+      apicks = [];
+    } else say(`angle: ${apicks.map(atomName).join("–")}${apicks.length === 1 ? "–…–…" : "–…"} (${tool ? "click" : "triple-click"} ${apicks.length === 1 ? "the vertex" : "the 3rd atom"})`);
+  }
+  v.render();
+}
+function clearMarks() {  // shapes of measurements and selections (the text log stays)
+  marks.forEach(m => { if (m instanceof $3Dmol.Label) viewer.removeLabel(m); else viewer.removeShape(m); });
+  hilite.forEach(s => viewer.removeShape(s));
+  if (selMark) viewer.removeShape(selMark);
+  selMark = null; marks = []; dpicks = []; apicks = []; hilite = []; $("poly").innerHTML = "";
+}
+function clearMeasurements() { clearMarks(); $("out").textContent = ""; }
+
+// ------------------------------------------------------------------ frames
+let playing = null;
+function updateFrameUI() {
+  const n = T.frames.length, many = n > 1;
+  $("trajsec").classList.toggle("hidden", !many);
+  $("frame").max = Math.max(0, n - 1); $("frame").value = T.fi;
+  $("fnum").textContent = `${T.fi + 1} / ${n}`;
+  $("fname").textContent = n ? (frame().name || "") : "";
+  if (many && !$("t_all").checked) { const {step, count} = ghostPlan(); $("allnote").textContent = step > 1 ? `every ${step}th, ${count}` : ""; }
+}
+function stopPlay() { clearTimeout(playing); playing = null; $("play").textContent = "▶"; if (T && T.frames.length) updateInfo(); }
+function startPlay() {
+  $("play").textContent = "❚❚";
+  const step = () => { setFrame(T.fi + 1); playing = setTimeout(step, 1000 / +$("fps").value); };
+  playing = true; step();
+}
+$("play").onclick = () => playing ? stopPlay() : startPlay();
+$("prev").onclick = () => { stopPlay(); setFrame(T.fi - 1); };
+$("next").onclick = () => { stopPlay(); setFrame(T.fi + 1); };
+$("frame").oninput = () => { stopPlay(); setFrame(+$("frame").value); };
+$("t_all").onchange = () => { T.toggles.all = $("t_all").checked; buildGhost(); viewer.render(); };
+window.addEventListener("keydown", e => {  // ← → step frames, space plays (not while typing in a field)
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test((e.target.tagName || "")) && e.target.type !== "range" && e.target.type !== "checkbox") return;
+  if (e.key === "Escape") {
+    if (!$("ctx").classList.contains("hidden")) { hideCtx(); return; }
+    if (!$("shade").classList.contains("hidden")) return;
+    setTool(null); clearMeasurements(); viewer.render(); return;
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); savePage(); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "o") { e.preventDefault(); $("file").click(); return; }
+  if (!T || T.frames.length < 2 || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); stopPlay(); setFrame(T.fi + (e.key === "ArrowRight" ? 1 : -1)); }
+  else if (e.key === " ") { e.preventDefault(); playing ? stopPlay() : startPlay(); }
+  else if (e.key === "Home" || e.key === "End") { e.preventDefault(); stopPlay(); setFrame(e.key === "Home" ? 0 : T.frames.length - 1); }
+});
+
+// ------------------------------------------------------------------ image export (right-click menu)
+async function renderPNG(scale, clear) {  // the view as a canvas at `scale` pixels per CSS pixel, axes overlay included
+  const own = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
+  try {
+    Object.defineProperty(window, "devicePixelRatio", {configurable: true, get: () => scale});
+    viewer.resize();
+    if (clear) viewer.setBackgroundColor(bgColor(), 0);
+    viewer.render();
+    const gl = viewer.getCanvas(), canvas = document.createElement("canvas");
+    canvas.width = gl.width; canvas.height = gl.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(gl, 0, 0);
+    if ($("t_axes").checked && T.frames.length) {
+      const svg = $("axes").cloneNode(true), k = gl.width / gl.clientWidth, w = 140 * k;
+      svg.setAttribute("xmlns", "http://www.w3.org/2000/svg"); svg.setAttribute("width", w); svg.setAttribute("height", w);
+      svg.querySelectorAll("title").forEach(t => t.remove());
+      svg.querySelectorAll("text").forEach(t => t.setAttribute("style", "font:600 13px sans-serif;dominant-baseline:central;text-anchor:middle"));
+      const url = URL.createObjectURL(new Blob([svg.outerHTML], {type: "image/svg+xml"}));
+      const img = new Image(); await new Promise((ok, bad) => { img.onload = ok; img.onerror = bad; img.src = url; });
+      ctx.drawImage(img, canvas.width - 16 * k - w, canvas.height - 16 * k - w, w, w);
+      URL.revokeObjectURL(url);
+    }
+    return canvas;
+  } finally {
+    if (own) Object.defineProperty(window, "devicePixelRatio", own); else delete window.devicePixelRatio;
+    viewer.setBackgroundColor(bgColor(), 1);
+    viewer.resize(); viewer.render();
+  }
+}
+// ---- saving: the system "Save as" dialog (folder and file name) where the browser has one (Chrome, Edge, the app),
+// else a download. The dialog must open within the click, so the destination is chosen before anything is rendered.
+const SAVE_TYPES = {png: ["PNG image", "image/png"], html: ["chucha page", "text/html"], cif: ["CIF", "chemical/x-cif"],
+                    vasp: ["POSCAR", "text/plain"], xyz: ["xyz", "text/plain"]};
+let pickerRefused = false;  // the dialog opened but writing was not allowed (an editor's preview pane): download from now on
+async function chooseFile(name) {  // -> a file handle, "download" (no dialog here), or null (cancelled)
+  if (!window.showSaveFilePicker || pickerRefused) return "download";
+  const ext = name.split(".").pop(), t = SAVE_TYPES[ext];
+  try {
+    return await window.showSaveFilePicker({suggestedName: name, types: t ? [{description: t[0], accept: {[t[1]]: ["." + ext]}}] : undefined});
+  } catch (e) { return e.name === "AbortError" ? null : "download"; }  // blocked (e.g. some frames): download instead
+}
+async function writeFile(target, name, blob) {  // -> the name the file got
+  if (target !== "download") {
+    try {
+      const w = await target.createWritable(); await w.write(blob); await w.close();
+      return target.name;
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      pickerRefused = true; name = target.name || name;  // the name chosen in the dialog, as a download
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  return name;
+}
+const fileStem = () => (T.title || $("title").textContent || "chucha").replace(/[^\w.-]+/g, "_");
+async function savePNG(scale, clear) {
+  const target = await chooseFile(`${fileStem()}.png`);
+  if (!target) return;
+  try {
+    const canvas = await renderPNG(scale, clear);
+    const blob = await new Promise(ok => canvas.toBlob(ok, "image/png"));
+    window.lastPNG = {width: canvas.width, height: canvas.height, url: canvas.toDataURL("image/png")};  // for tests
+    const saved = await writeFile(target, `${fileStem()}.png`, blob);
+    toast(`Saved ${saved} · ${canvas.width} × ${canvas.height}`);
+  } catch (e) { say_msg("PNG: " + (e.message || e)); }
+}
+function copyPNG() {  // clipboard.write is called within the click (Safari needs that); the image follows as a promise
+  const blob = renderPNG(2, false).then(canvas => {
+    window.lastPNG = {width: canvas.width, height: canvas.height, copied: true};
+    return new Promise(ok => canvas.toBlob(ok, "image/png"));
+  });
+  try {
+    navigator.clipboard.write([new ClipboardItem({"image/png": blob})])
+      .then(() => toast("Image copied"), () => toast("Copy is not allowed here: use Save PNG"));
+  } catch (e) { toast("Copy is not allowed here: use Save PNG"); }
+}
+// ---- what is under the pointer: the front-most atom, bond or polyhedron face (screen projection, depth from the rotation)
+const qconj = q => [-q[0], -q[1], -q[2], q[3]];
+function pickAt(x, y) {
+  if (!T.frames.length) return null;
+  const scr = p => viewer.modelToScreen(P(p)), depth = p => rotv(T.quat, p)[2];
+  const ex = rotv(qconj(T.quat), [1, 0, 0]);  // screen x in model space: Å -> pixels
+  let best = null;
+  const take = (d, hit) => { if (!best || d > best.depth) best = {...hit, depth: d}; };
+  const c0 = scr(add3(O, [0, 0, 0])), c1 = scr(add3(O, ex)), pxA = Math.hypot(c1.x - c0.x, c1.y - c0.y);  // pixels per Å
+  const atomsIn = (m, radius) => m && m.selectedAtoms({}).forEach(a => {
+    const R = radius(a); if (!R) return;
+    const p = [a.x, a.y, a.z], s = scr(p);
+    if (Math.hypot(s.x - x, s.y - y) <= R * pxA) take(depth(p) + R, {kind: "atom", atom: a});
+  });
+  const rAtom = a => !$("t_atoms").checked || T.hidden.has(a.info.elem) ? 0 : elemStyle(a.info.elem).radius;
+  atomsIn(models.at, rAtom); atomsIn(models.im, rAtom);
+  if ($("t_mk").checked) atomsIn(models.mk, () => 0.22);
+  if (ghost) atomsIn(ghost, a => 0.6 * rAtom(a));
+  bondSegs.forEach(sg => {
+    const p = scr(sg.a), q = scr(sg.b), dx = q.x - p.x, dy = q.y - p.y, L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / L)) : 0;
+    const w = scr(add3(sg.a, ex)), px = Math.hypot(w.x - p.x, w.y - p.y);
+    if (Math.hypot(p.x + t * dx - x, p.y + t * dy - y) <= Math.max(4, BOND_R * px))
+      take(depth(sg.a) + t * (depth(sg.b) - depth(sg.a)), {kind: "bond", bond: sg});
+  });
+  if ($("t_poly").checked) polyPlaces().forEach(({pl, c}) => { const Tv = shift(...c);
+      if (!polyVisible(pl.elem)) return;
+      for (let f = 0; f < pl.faces.length; f += 3) {
+        const V = [0, 1, 2].map(k => add3(pl.vertices[pl.faces[f + k]], Tv)), S = V.map(scr);
+        const d = (S[1].y - S[2].y) * (S[0].x - S[2].x) + (S[2].x - S[1].x) * (S[0].y - S[2].y);
+        if (Math.abs(d) < 1e-9) continue;
+        const l0 = ((S[1].y - S[2].y) * (x - S[2].x) + (S[2].x - S[1].x) * (y - S[2].y)) / d;
+        const l1 = ((S[2].y - S[0].y) * (x - S[2].x) + (S[0].x - S[2].x) * (y - S[2].y)) / d, l2 = 1 - l0 - l1;
+        if (l0 >= 0 && l1 >= 0 && l2 >= 0) take(l0 * depth(V[0]) + l1 * depth(V[1]) + l2 * depth(V[2]), {kind: "poly", poly: pl, cell: c});
+      }
+  });
+  return best;
+}
+
+// ---- the menu: actions for the object under the pointer, then image, page, export and view
+let ctxPending = null, ctxTarget = null, persp = !!D.opts.perspective;
+const ctxItem = (act, text, extra = "") => `<button data-act="${act}"${extra}>${text}</button>`;
+function showCtx(x, y) {
+  const m = $("ctx"), hit = ctxTarget = pickAt(x, y), f = frame();
+  let html = "";
+  if (hit && hit.kind === "atom") {
+    const a = hit.atom, e = a.info.elem, r = [a.x, a.y, a.z];
+    html = `<div class="ctxh">${esc(atomName(a))}${periodic ? " · " + K.toFrac(r, Ainv).map(v => v.toFixed(3)).join(" ") : ""}</div>` +
+      ctxItem("center", "Center here") + ctxItem("hideel", `Hide ${e}`) + ctxItem("onlyel", `Show only ${e}`) +
+      (T.hidden.size ? ctxItem("allel", "Show all elements") : "") + ctxItem("colorel", `Color of ${e}…`) + ctxItem("copyxyz", "Copy coordinates");
+  } else if (hit && hit.kind === "bond") {
+    const b = hit.bond, d = Math.hypot(...[0, 1, 2].map(k => b.b[k] - b.a[k]));
+    html = `<div class="ctxh">${esc(label(b.i))}–${esc(label(b.j))} · ${fmt(d)} Å</div>` + ctxItem("hidebond", `Hide ${f.symbols[b.i]}–${f.symbols[b.j]} bonds`);
+  } else if (hit && hit.kind === "poly") {
+    const pl = hit.poly;
+    html = `<div class="ctxh">${esc(label(pl.idx))} · CN ${pl.ligands.length}</div>` +
+      ctxItem("hidepoly", `Hide ${pl.elem} polyhedra`) + ctxItem("colorpoly", `Color of ${pl.elem} polyhedra…`);
+  }
+  $("ctxobj").innerHTML = html ? html + "<hr>" : "";
+  m.classList.remove("hidden");
+  m.querySelectorAll(".along")[1].classList.toggle("hidden", !periodic);  // look along a/b/c
+  m.querySelectorAll(".xper").forEach(b => b.classList.toggle("hidden", !periodic));
+  $("ctxpersp").classList.toggle("on", persp);
+  const w = m.offsetWidth, h = m.offsetHeight;
+  m.style.left = Math.min(x, innerWidth - w - 4) + "px"; m.style.top = Math.min(y, innerHeight - h - 4) + "px";
+}
+function hideCtx() { $("ctx").classList.add("hidden"); }
+// right-click without dragging opens the menu (a right-drag zooms in 3Dmol; on a Mac the event comes on mouse down)
+$("viewer").addEventListener("contextmenu", e => {
+  e.preventDefault();
+  if (!T.frames.length) return;
+  if (e.buttons & 2) ctxPending = {x: e.clientX, y: e.clientY}; else showCtx(e.clientX, e.clientY);
+});
+window.addEventListener("mouseup", e => {
+  if (ctxPending && e.button === 2) { const p = ctxPending; ctxPending = null;
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < 5) showCtx(p.x, p.y); }
+});
+window.addEventListener("mousedown", e => { if (!$("ctx").contains(e.target)) hideCtx(); }, true);
+window.addEventListener("wheel", hideCtx, {passive: true});
+function pickColor(start, apply) {  // the system color picker for one value
+  const inp = $("ctxcolor"), r = $("ctx").getBoundingClientRect();
+  inp.style.left = r.left + "px"; inp.style.top = r.top + "px";
+  inp.value = start; inp.oninput = () => apply(inp.value);
+  try { inp.showPicker(); } catch (e) { inp.click(); }
+}
+const restyle = () => { styleAtoms(); drawBonds(); drawPolyhedra(); renderElems(); viewer.render(); };
+async function exportFrame(fmt) {
+  const f = frame(), name = (T.title || formula(f)).replace(/[^\w.-]+/g, "_");
+  const file = {cif: `${name}.cif`, poscar: `${name}.vasp`, xyz: `${name}.xyz`}[fmt];
+  const target = await chooseFile(file);
+  if (!target) return;
+  const text = {cif: K.writeCif, poscar: K.writePoscar, xyz: K.writeXyz}[fmt](f, name);
+  window.lastExport = {file, text};  // for tests
+  try {
+    const saved = await writeFile(target, file, new Blob([text], {type: "text/plain"}));
+    toast(`Saved ${saved}${T.frames.length > 1 ? ` (frame ${T.fi + 1})` : ""}`);
+  } catch (e) { say_msg("Export: " + (e.message || e)); }
+}
+function copyText(t, what) {
+  navigator.clipboard.writeText(t).then(() => toast(`${what} copied`), () => toast(`Copy is not allowed here: ${t}`));
+}
+$("ctx").onclick = e => {
+  const act = e.target.dataset && e.target.dataset.act; if (!act) return;
+  hideCtx();
+  const hit = ctxTarget, f = frame();
+  const actions = {
+    png2: () => savePNG(2, false), png4: () => savePNG(4, false), pngclear: () => savePNG(2, true), copy: copyPNG,
+    savepage: savePage, reset: resetView, a: () => viewAlong(A[0]), b: () => viewAlong(A[1]), c: () => viewAlong(A[2]),
+    cif: () => exportFrame("cif"), poscar: () => exportFrame("poscar"), xyz: () => exportFrame("xyz"),
+    persp: () => { persp = !persp; viewer.setProjection(persp ? "perspective" : "orthographic"); viewer.render(); },
+    center: () => {  // rotation and zoom pivot on this atom
+      const v = viewer.getView(), a = hit.atom; v[0] = -a.x; v[1] = -a.y; v[2] = -a.z; viewer.setView(v); applyCam(); viewer.render();
+    },
+    hideel: () => { T.hidden.add(hit.atom.info.elem); restyle(); },
+    onlyel: () => { T.hidden = new Set(T.frames.flatMap(g => g.symbols).filter(x => x !== hit.atom.info.elem)); restyle(); },
+    allel: () => { T.hidden.clear(); restyle(); },
+    colorel: () => { const e = hit.atom.info.elem; pickColor(elemStyle(e).color, c => { T.colors[e] = c; restyle(); }); },
+    copyxyz: () => {
+      const a = hit.atom, r = [a.x, a.y, a.z];
+      copyText(`${atomName(a)}${periodic ? `  frac ${K.toFrac(r, Ainv).map(v => v.toFixed(5)).join(" ")}` : ""}  cart ${r.map(v => v.toFixed(5)).join(" ")} Å`, "Coordinates");
+    },
+    hidebond: () => { T.bondHidden.add(pairKey(f.symbols[hit.bond.i], f.symbols[hit.bond.j])); drawBonds(); renderBondPanel(); viewer.render(); },
+    hidepoly: () => { T.polyHidden.add(hit.poly.elem); drawPolyhedra(); renderPolyPanel(); viewer.render(); },
+    colorpoly: () => {
+      const e = hit.poly.elem;
+      pickColor(T.polyColors[e] || elemStyle(e).color, c => { T.polyColors[e] = c; drawPolyhedra(); renderPolyPanel(); viewer.render(); });
+    },
+  };
+  actions[act]();
+};
+if (persp) viewer.setProjection("perspective");
+// for tests: the menu as it would open at a point
+window.chucha_ctx = (x, y) => { showCtx(x, y); return {target: ctxTarget && ctxTarget.kind, items: [...$("ctx").querySelectorAll("button")].filter(b => b.offsetParent).map(b => b.textContent)}; };
+
+// ------------------------------------------------------------------ save page: one HTML file with every tab as it is now
+function b64(values) {  // Float32Array -> base64 (little-endian float32, as Python writes it)
+  const u = new Uint8Array(values.buffer, values.byteOffset, values.byteLength);
+  let bin = ""; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function tabPayload(t) {
+  let prev = null;
+  const frames = t.frames.map(f => {
+    const g = {symbols: f.symbols === prev ? null : f.symbols, xyz: f.xyz, cell: f.cell, periodic: f.periodic, data: f.data,
+               labels: f.labels, name: f.name, spacegroup: f.spacegroup || null, formula: f.formula, warning: f.warning};
+    prev = f.symbols; return g;
+  });
+  const volumes = t.volumes.map(v => ({name: v.name, n: v.n, cell: v.cell, cellpar: v.cellpar, label: v.label,
+                                       ...(Object.keys(v.channels).length > 1 ? {b64channels: Object.fromEntries(Object.entries(v.channels).map(([c, a]) => [c, b64(a)]))}
+                                                                              : {b64: b64(v.channels[Object.keys(v.channels)[0]])}),
+                                       channel: v.channel, signed: v.signed, presets: v.presets, level: v.level,
+                                       color: v.color, color2: v.color2, show: v.show, opacity: v.opacity}));
+  const state = {sc: t.sc, fi: t.fi, quat: t.quat, home: t.home, view: t.view, viewW: t.viewW, hidden: [...t.hidden], toggles: t.toggles,
+                 colors: t.colors, polyColors: t.polyColors, polyHidden: [...t.polyHidden], polyOnly: t.polyOnly && [...t.polyOnly],
+                 polyOpacity: t.polyOpacity, bonds: t.bonds, bondHidden: [...t.bondHidden], bondSeen: [...t.bondSeen], showInfo: t.showInfo, log: t.log};
+  return {title: t.title, frames, volumes, markers: t.markers, state};
+}
+async function savePage() {
+  hideCtx();
+  const target = await chooseFile(`${fileStem()}.html`);
+  if (!target) return;
+  saveTab();
+  const opts = {...D.opts, theme: $("t_dark").checked ? "dark" : "light", axis: $("axis").value === "free" ? null : $("axis").value, view: null, perspective: persp};
+  const data = {tabs: tabs.filter(t => t.frames.length).map(tabPayload), opts, current: Math.max(0, tabs.filter(t => t.frames.length).indexOf(T))};
+  const json = JSON.stringify(data).replace(/<\//g, "<\\/");
+  const html = PRISTINE.replace(/<!--app-->[\s\S]*?<!--\/app-->/, "")
+    .replace(/\/\*chucha-data\*\/[\s\S]*?\/\*end-data\*\//, () => `/*chucha-data*/${json}/*end-data*/`);
+  window.lastPage = {bytes: html.length, html};  // for tests
+  try {
+    const saved = await writeFile(target, `${fileStem()}.html`, new Blob([html], {type: "text/html"}));
+    toast(`Saved ${saved} · ${(html.length / 1e6).toFixed(1)} MB`);
+  } catch (e) { say_msg("Save page: " + (e.message || e)); }
+}
+
+// ------------------------------------------------------------------ files: drop or open, then replace, add or new tab
+function ask(head, text, options) {  // options: [[key, label, primary?]] -> Promise(key)
+  return new Promise(done => {
+    $("dlgt").textContent = head; $("dlgp").textContent = text;
+    $("dlga").innerHTML = "";
+    options.forEach(([key, lab, primary]) => {
+      const b = document.createElement("button"); b.className = "btn" + (primary ? " primary" : ""); b.textContent = lab;
+      b.dataset.key = key;
+      b.onclick = () => { $("shade").classList.add("hidden"); done(key); };
+      $("dlga").appendChild(b);
+    });
+    $("shade").classList.remove("hidden");
+  });
+}
+const sameCell = (p, q) => !!(p && q) && p.every((r, i) => r.every((x, j) => Math.abs(x - q[i][j]) < 1e-3));
+function alignVolume(v, cell) {  // a .grd knows only cell parameters: draw it over the structure's own cell when they match
+  if (v.cellpar && cell && K.sameCellPar(K.cellPar(cell), v.cellpar)) v.cell = cell;
+}
+function tabTitle(R, fileName) { const f = R.frames.find(g => !cellOnly(g)); return f ? (f.formula || formula(f)) : fileName; }
+function replaceAll(R, fileName) {  // the current tab shows R (and nothing else)
+  stopPlay(); clearMeasurements();
+  T.volumes.forEach(clearIso);
+  dropGhost();
+  T.frames = []; T.volumes = []; T.fi = 0; T.markers = []; T.view = null;
+  T.title = tabTitle(R, fileName);
+  addFrames(R.frames);
+  if (R.volume) addVolume(R.volume);
+  resetTab();
+  renderTabs(); refreshUI();
+  build();
+}
+async function openFile(file) {
+  let R;
+  try { R = K.parseFile(file.name, K.isBinary(file.name) ? await file.arrayBuffer() : await file.text()); }
+  catch (e) { say_msg(`${file.name}: ${e.message || e}`); return; }
+  const warn = R.frames[0] && R.frames[0].warning;
+  say_msg(warn ? `${file.name}: ${warn}` : "");
+  if (!T.frames.length) return replaceAll(R, file.name);
+  if (R.volume) alignVolume(R.volume, frame().cell);
+  const what = `${file.name}: ${R.frames.length > 1 ? R.frames.length + " frames of " : ""}${cellOnly(R.frames[0]) ? "a cell" : formula(R.frames[0])}`;
+  const toNewTab = () => { saveTab(); const t = newTab(); switchTab(t); replaceAll(R, file.name); };
+  // a tab showing only a cell (from a .grd) takes a dropped structure as its own, keeping the isosurfaces:
+  // silently for one structure on the same cell, otherwise (a trajectory, another cell) after asking
+  if (!R.volume && T.frames.every(cellOnly)) {
+    const vols = T.volumes, f0 = R.frames[0];
+    const keep = () => { replaceAll(R, file.name);
+      vols.forEach(v => { alignVolume(v, f0.cell); v.shapes = []; T.volumes.push(v); });
+      renderLayers(); buildVolumes(); viewer.render(); };
+    const same = sameCell(f0.cell, frame().cell) || K.sameCellPar(K.cellPar(f0.cell), K.cellPar(frame().cell));
+    if (R.frames.length === 1 && same) return keep();
+    const fit = same ? "" : "\nIts cell differs from the isosurface's cell.";
+    const k = await ask("Structure", `${what}.\nThis tab shows ${T.volumes.length > 1 ? T.volumes.length + " isosurfaces" : "an isosurface"} without atoms.${fit}`,
+      [["cancel", "Cancel"], ["tab", "New tab"], ["replace", "Replace all"], ["keep", "Show with the isosurface", true]]);
+    if (k === "tab") toNewTab();
+    if (k === "replace") replaceAll(R, file.name);
+    if (k === "keep") keep();
+    return;
+  }
+  if (R.volume) {
+    if (!periodic) { toNewTab(); return; }
+    const fit = sameCell(R.volume.cell, frame().cell) ? "" : "\nIts cell differs from the shown structure: the isosurface is drawn over its own cell.";
+    const k = await ask("Volumetric data", `${what}, grid ${R.volume.n.join(" × ")}.${fit}`,
+      [["cancel", "Cancel"], ["tab", "New tab"], ["replace", "Replace all"], ["add", "Add isosurface", true]]);
+    if (k === "tab") toNewTab();
+    if (k === "replace") replaceAll(R, file.name);
+    if (k === "add") { stopPlay(); clearMarks(); addVolume(R.volume); resetTab(); refreshUI(); build(); }
+  } else {
+    const k = await ask("Structure", `${what}.\nThis tab shows ${T.frames.length} frame${T.frames.length > 1 ? "s" : ""} of ${formula(T.frames[0])}.`,
+      [["cancel", "Cancel"], ["tab", "New tab"], ["replace", "Replace"], ["add", R.frames.length > 1 ? "Add as frames" : "Add as frame", true]]);
+    if (k === "tab") toNewTab();
+    if (k === "replace") replaceAll(R, file.name);
+    if (k === "add") { stopPlay(); clearMarks(); const first = T.frames.length; addFrames(R.frames); T.fi = first; resetTab(); refreshUI(); build(); }
+  }
+}
+async function openFiles(list) { for (const f of list) await openFile(f); }
+let dragDepth = 0;
+window.addEventListener("dragenter", e => { e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+window.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); } });
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+  if (e.dataTransfer && e.dataTransfer.files.length) openFiles([...e.dataTransfer.files]);
+});
+$("openf").onclick = () => $("file").click();
+$("file").onchange = () => { const l = [...$("file").files]; $("file").value = ""; openFiles(l); };
+$("addtab").onclick = () => { const t = newTab(); switchTab(t); expand(); };
+
+// ------------------------------------------------------------------ controls
+["nx", "ny", "nz"].forEach((id, d) => $(id).onchange = () => {
+  const x = Math.round(+$(id).value);
+  if (!(x >= 1 && x <= 4)) { say_msg("supercell: 1 to 4 per axis"); $(id).value = T.sc[d]; return; }
+  T.sc[d] = x; say_msg(""); build(); updateFrameUI();
+});
+const layerChanged = draw => { if (needScene() !== builtWithScene) rebuildBonds(); else { draw(); viewer.render(); } };
+$("t_poly").onchange = () => layerChanged(drawPolyhedra);
+$("t_cell").onchange = () => { drawCells(); viewer.render(); };
+$("t_mk").onchange = () => { styleMarkers(); viewer.render(); };
+$("t_axes").onchange = drawAxes;
+$("t_atoms").onchange = () => { $("elems").classList.toggle("off", !$("t_atoms").checked); styleAtoms(); viewer.render(); };
+// ---- Layers ▸ panels: elements (show, color), polyhedra (opacity, centers, colors), bond types (on, length, add)
+document.querySelectorAll(".exp[data-panel]").forEach(b => b.onclick = e => {  // the click must not toggle the layer
+  e.preventDefault();
+  const el = $(b.dataset.panel), open = el.classList.contains("hidden");
+  el.classList.toggle("hidden", !open); b.textContent = open ? "▾" : "▸";
+  if (open && T.frames.length) renderElems();  // fill the panel (counts need the scene)
+});
+const swatch = (attr, e, color, title) => `<input type="color" ${attr}="${e}" value="${color}" title="${title}">`;
+function renderElems() {
+  const els = [...new Set(T.frames.flatMap(f => f.symbols))];
+  $("elems").innerHTML = els.map(e => `<label><input type="checkbox" data-e="${e}"${T.hidden.has(e) ? "" : " checked"}>` +
+    `${swatch("data-c", e, elemStyle(e).color, "color of " + e)}${e}</label>`).join("");
+  $("elems").classList.toggle("off", !$("t_atoms").checked);
+  $("elems").querySelectorAll("input[data-e]").forEach(b => b.onchange = () => {
+    if (b.checked) T.hidden.delete(b.dataset.e); else T.hidden.add(b.dataset.e);
+    styleAtoms(); drawBonds(); viewer.render();
+  });
+  $("elems").querySelectorAll("input[data-c]").forEach(b => b.oninput = () => {
+    T.colors[b.dataset.c] = b.value;
+    styleAtoms(); drawBonds(); drawPolyhedra(); renderPolyPanel(); viewer.render();
+  });
+  renderPolyPanel(); renderBondPanel();
+}
+function renderPolyPanel() {
+  const open = !$("p_poly").classList.contains("hidden");
+  const cs = T.frames.length && (needScene() || open) ? [...new Set(sceneOf(frame()).polyhedra.map(p => p.elem))] : [];
+  $("popac").value = T.polyOpacity; $("popacv").textContent = T.polyOpacity.toFixed(2);
+  $("pcenters").innerHTML = cs.length ? cs.map(e => `<label><input type="checkbox" data-p="${e}"${polyVisible(e) ? " checked" : ""}>` +
+    `${swatch("data-pc", e, T.polyColors[e] || elemStyle(e).color, "polyhedra around " + e)}${e}</label>`).join("")
+    : '<span class="x">no polyhedra</span>';
+  $("pcenters").querySelectorAll("input[data-p]").forEach(b => b.onchange = () => {
+    const e = b.dataset.p;
+    if (b.checked) { T.polyHidden.delete(e); if (T.polyOnly) T.polyOnly.add(e); } else T.polyHidden.add(e);
+    drawPolyhedra(); viewer.render();
+  });
+  $("pcenters").querySelectorAll("input[data-pc]").forEach(b => b.oninput = () => { T.polyColors[b.dataset.pc] = b.value; drawPolyhedra(); viewer.render(); });
+}
+$("popac").oninput = () => { T.polyOpacity = +$("popac").value; $("popacv").textContent = T.polyOpacity.toFixed(2); drawPolyhedra(); viewer.render(); };
+const KIND = {vesta: "VESTA default", covalent: "covalent radii", added: "added"};
+function renderBondPanel() {
+  const syms = T.frames.length ? frame().symbols : [], count = {};
+  if (T.frames.length && (needScene() || !$("p_bonds").classList.contains("hidden")))
+    sceneOf(frame()).bonds.forEach(([i, j]) => { const k = [syms[i], syms[j]].sort().join("|"); count[k] = (count[k] || 0) + 1; });
+  // types with bonds in this frame, and those the user changed or added (so they can be undone); the checkbox only
+  // shows or hides the drawn bonds (polyhedra keep them); length and × change which bonds exist
+  const deleted = b => T.bonds[b.a + "|" + b.b] === 0 || T.bonds[b.b + "|" + b.a] === 0;
+  const types = K.bondTypes(syms, T.bonds).filter(b => !deleted(b) &&
+    (count[pairKey(b.a, b.b)] || b.kind === "added" || b.kind.endsWith("*")));
+  $("btypes").innerHTML = types.length ? types.map((b, k) => `<div class="brow" title="${KIND[b.kind.replace("*", "")]}${b.kind.endsWith("*") ? ", changed" : ""}">` +
+    `<label><input type="checkbox" data-k="${k}"${bondVisible(b.a, b.b) ? " checked" : ""} title="show / hide these bonds">${b.a}–${b.b}${b.kind === "covalent" ? ' <span class="kind">cov</span>' : ""}` +
+    `${b.kind === "added" || b.kind.endsWith("*") ? ' <span class="kind">•</span>' : ""}</label>` +
+    `<span class="kind" style="min-width:18px;text-align:right">${count[[b.a, b.b].sort().join("|")] || ""}</span>` +
+    `<input type="text" class="bd" data-d="${k}" inputmode="decimal" value="${b.d.toFixed(3)}"><span class="x">Å</span>` +
+    `<button class="icon bdel" data-del="${k}" title="delete this bond type">×</button></div>`).join("")
+    : '<span class="x">no bonds: add a type below</span>';
+  const set = (b, d) => { setBondType(b.a, b.b, d); rebuildBonds(); };
+  $("btypes").querySelectorAll("input[data-k]").forEach(c => c.onchange = () => {
+    const b = types[+c.dataset.k], key = pairKey(b.a, b.b);
+    if (c.checked) T.bondHidden.delete(key); else T.bondHidden.add(key);
+    drawBonds(); viewer.render();
+  });
+  $("btypes").querySelectorAll("button[data-del]").forEach(x => x.onclick = () => {
+    const b = types[+x.dataset.del];
+    delete T.bonds[b.b + "|" + b.a];
+    if (b.kind === "added") delete T.bonds[b.a + "|" + b.b]; else T.bonds[b.a + "|" + b.b] = 0;
+    rebuildBonds();
+  });
+  $("btypes").querySelectorAll("input[data-d]").forEach(inp => {
+    const apply = () => { const b = types[+inp.dataset.d], d = readDist(inp); if (d !== null) set(b, d); };
+    inp.onchange = apply; inp.onkeydown = e => { if (e.key === "Enter") inp.blur(); };
+  });
+  const els = [...new Set(syms)].sort(), opt = els.map(e => `<option>${e}</option>`).join("");
+  const keepA = $("ba").value, keepB = $("bb").value;
+  $("ba").innerHTML = opt; $("bb").innerHTML = opt;
+  if (els.includes(keepA)) $("ba").value = keepA;
+  if (els.includes(keepB)) $("bb").value = keepB; else if (els.length > 1) $("bb").value = els[els.length - 1];
+  addHint();
+}
+function setBondType(a, b, d) {  // a length for a pair; the default length means "unchanged"
+  delete T.bonds[b + "|" + a]; delete T.bonds[a + "|" + b];
+  const dflt = defaultLength(a, b);
+  if (dflt === null || Math.abs(d - dflt) > 6e-4) T.bonds[a + "|" + b] = d;  // fields show 3 decimals
+}
+function defaultLength(a, b) {  // the VESTA / covalent length of a pair, if it has one
+  const t = K.bondTypes(T.frames.length ? frame().symbols : [], {}).find(x => (x.a === a && x.b === b) || (x.a === b && x.b === a));
+  return t ? t.d : null;
+}
+function addHint() {
+  const d = defaultLength($("ba").value, $("bb").value);
+  $("bdist").placeholder = d ? d.toFixed(2) : "Å";
+  $("bdist").title = d ? `max length, 0.3 to 15 Å (empty: the default ${d.toFixed(3)} Å)` : "max length, 0.3 to 15 Å";
+}
+$("ba").onchange = addHint; $("bb").onchange = addHint;
+const MAX_BOND = 15;  // Å
+function readDist(inp) {  // a bond length from a field; a bad value marks the field (red, reason in the tooltip)
+  const d = parseFloat(String(inp.value).replace(",", "."));
+  const bad = !(d >= 0.3 && d <= MAX_BOND);
+  inp.classList.toggle("bad", bad);
+  inp.title = bad ? `bond length: 0.3 to ${MAX_BOND} Å` : "";
+  return bad ? null : d;
+}
+function rebuildBonds() { const v = viewer.getView(); buildStructure(); viewer.setView(v); applyCam(); viewer.render(); }
+$("badd").onclick = () => {
+  const a = $("ba").value, b = $("bb").value, dflt = defaultLength(a, b);
+  if (!$("bdist").value.trim() && dflt) $("bdist").value = dflt.toFixed(3);  // empty: the default length (restores a deleted type)
+  const d = readDist($("bdist"));
+  if (!a || !b || d === null) return;
+  setBondType(a, b, d); $("bdist").value = "";
+  rebuildBonds();
+};
+$("bdist").onkeydown = e => { if (e.key === "Enter") $("badd").click(); };
+$("t_bonds").onchange = () => layerChanged(drawBonds);
+$("clear").onclick = () => { clearMeasurements(); viewer.render(); };
+$("collapse").onclick = () => { const c = document.body.classList.toggle("collapsed"); $("collapse").textContent = c ? "+" : "−"; updateShift(); };
+$("va").onclick = () => viewAlong(A[0]);
+$("vb").onclick = () => viewAlong(A[1]);
+$("vc").onclick = () => viewAlong(A[2]);
+function resetView() { if (!T.frames.length) return; T.quat = T.home.slice(); viewer.zoomTo({model: models.box}); viewer.zoom(0.8); applyCam(); viewer.render(); }
+$("home").onclick = resetView;
+// for scripting and tests
+window.chucha = {open: (name, text) => openFile({name, text: async () => text}), frames: () => T.frames, volumes: () => T.volumes,
+                 frame: () => T.fi, setFrame, tabs: () => tabs, current: () => T, switchTab: k => switchTab(tabs[k]),
+                 info: () => frame() && (frame().summary || (spaceGroup(frame()), K.summary(frame())))};
+
+// ------------------------------------------------------------------ start
+if (D.opts.axis) { $("axis").value = D.opts.axis; $("axis").onchange(); }
+$("t_dark").checked = D.opts.theme === "dark"; $("t_dark").onchange = () => { applyTheme(); applyStyle(); };
+$("style").innerHTML = Object.entries(STYLES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+$("style").value = STYLES[D.opts.style] ? D.opts.style : "classic"; $("style").onchange = applyStyle;
+applyTheme(); applyStyle();
+(D.tabs.length ? D.tabs : [{title: "", frames: [], volumes: [], markers: []}]).forEach(d => {
+  const t = newTab(d.title); T = t;
+  addFrames(d.frames); d.volumes.forEach(v => { addVolume(v); alignVolume(T.volumes[T.volumes.length - 1], T.frames[0] && T.frames[0].cell); });
+  t.markers = d.markers || [];
+  if (t.frames.length) { setCell(); t.home = homeQuat(); t.quat = t.home.slice(); }
+  const st = d.state;  // a saved page: the tab as it was
+  if (st) {
+    Object.assign(t, {sc: st.sc, fi: Math.min(st.fi || 0, Math.max(0, t.frames.length - 1)), quat: st.quat, home: st.home, view: st.view, viewW: st.viewW,
+                      colors: st.colors || {}, polyColors: st.polyColors || {}, polyOpacity: st.polyOpacity ?? t.polyOpacity,
+                      bonds: st.bonds || {}, showInfo: !!st.showInfo, log: st.log || ""});
+    t.bondHidden = new Set(st.bondHidden || []); t.bondSeen = new Set(st.bondSeen || []);
+    t.hidden = new Set(st.hidden || []); t.polyHidden = new Set(st.polyHidden || []); t.polyOnly = st.polyOnly ? new Set(st.polyOnly) : null;
+    Object.assign(t.toggles, st.toggles || {});
+  }
+});
+const first = tabs[Math.min(D.current || 0, tabs.length - 1)]; T = null; switchTab(first);
+if (D.opts.view && T.frames.length) viewAlong(A["abc".indexOf(D.opts.view)]);
+if (Q.get("panel") === "closed") { document.body.classList.add("collapsed"); $("collapse").textContent = "+"; }
+updateShift();
+// ---- files named in the address: file= opens (each in its own tab), add= adds to the last one (frames or isosurface)
+async function fetchParsed(u) {
+  const url = new URL(u, location.href), name = decodeURIComponent(url.pathname.split("/").pop() || "file");
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return [K.parseFile(name, K.isBinary(name) ? await res.arrayBuffer() : await res.text()), name];
+}
+(async function loadFromAddress() {
+  const files = Q.getAll("file").filter(u => u.trim()), adds = Q.getAll("add").filter(u => u.trim());  // "?file=" alone: nothing
+  if (!files.length && !adds.length) return;
+  if (location.protocol === "file:") { say_msg("file= and add= need the page served over http(s), not opened from disk"); return; }
+  for (const u of files) {
+    try {
+      const [R, name] = await fetchParsed(u);
+      if (T.frames.length) { saveTab(); switchTab(newTab()); }
+      replaceAll(R, name);
+    } catch (e) { say_msg(`${u}: ${e.message || e}`); }
+  }
+  for (const u of adds) {
+    try {
+      const [R, name] = await fetchParsed(u);
+      if (!T.frames.length) { replaceAll(R, name); continue; }
+      if (R.volume) { alignVolume(R.volume, frame().cell); addVolume(R.volume); }
+      else addFrames(R.frames);
+      refreshUI(); build();
+    } catch (e) { say_msg(`${u}: ${e.message || e}`); }
+  }
+  if (D.opts.view && T.frames.length) viewAlong(A["abc".indexOf(D.opts.view)]);
+  if (tabs.length > 1) switchTab(tabs[0]);
+})();// ------------------------------------------------------------------ the installed app: offline cache, files opened from the system
+if (D.app && "serviceWorker" in navigator && /^https?:$/.test(location.protocol) && window.top === window)
+  navigator.serviceWorker.register("sw.js").catch(e => console.warn("chucha: no offline cache", e));
+if ("launchQueue" in window) launchQueue.setConsumer(async p => {
+  if (p.files && p.files.length) openFiles(await Promise.all(p.files.map(h => h.getFile())));
+});
+</script></body></html>
