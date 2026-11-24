@@ -52,7 +52,7 @@ def assign_oxidation_states(atoms, forbidden_species=_FORBIDDEN_SPECIES):
 
 
 def _summary(symbols, charges):
-    counts = Counter(zip(symbols, charges))
+    counts = Counter(zip(symbols, (int(round(q)) for q in charges)))
     return ", ".join(f"{s}{q:+d}×{n}" for (s, q), n in sorted(counts.items()))
 
 

@@ -150,3 +150,59 @@ def test_maps_save_load_and_paths_write(lfp_hops, tmp_path):
 
     paths.write(tmp_path / "vasp", format="vasp")
     assert (tmp_path / "vasp" / "hop_000" / "04" / "POSCAR").exists()
+
+
+# ------------------------------------------------------------------ BVSE oxidation states
+
+@pytest.fixture
+def unit_cell_only_assignment(monkeypatch):
+    """Oxidation states assigned only on the unit cell: like pymatgen on a cell with a vacancy, any
+    other cell fails. Returns the atoms (no oxi_states) and the list of assigned cell sizes."""
+    import importlib
+
+    bvse = importlib.import_module("gridmlip.models.bvse")   # the module (gridmlip.models.bvse is also a function)
+
+    atoms = lifepo4()
+    q = atoms.get_array("oxi_states").copy()
+    del atoms.arrays["oxi_states"]
+    calls = []
+
+    def assign(a, *args, **kwargs):
+        calls.append(len(a))
+        if len(a) != len(atoms):
+            raise ValueError("Valences cannot be assigned!")
+        return q.copy()
+
+    monkeypatch.setattr(bvse, "assign_oxidation_states", assign)
+    return atoms, q, calls
+
+
+def test_hop_assigns_oxidation_states_on_the_unit_cell(unit_cell_only_assignment):
+    atoms, q, calls = unit_cell_only_assignment
+    pl = Percolator(atoms, "Li", upper_bound=6.3)
+    s, t, *o = pl.unique_edges(pl.cutoff_search(1, 0.5), 0.5)[0]
+    hop = Hop(atoms, s, t, o)
+    path = hop.evaluate(BVSE("Li+", verbose=False), resolution=0.3).path(n_images=5)
+    assert calls == [len(atoms)] and path.barrier > 0
+    reps = int(np.prod(hop.scale))
+    assert np.array_equal(hop.supercell.get_array("oxi_states"), np.tile(q, reps))
+    assert hop.host.get_array("oxi_states").sum() == np.tile(q, reps).sum() - 2           # two Li+ fewer
+    assert "oxi_states" not in atoms.arrays                                                  # caller's atoms untouched
+
+
+def test_hops_assign_oxidation_states_once(unit_cell_only_assignment):
+    atoms, q, calls = unit_cell_only_assignment
+    pl = Percolator(atoms, "Li", upper_bound=6.3)
+    hops = Hops(atoms, "Li", pl.unique_edges(pl.cutoff_search(1, 0.5), 0.5), resolution=0.3)
+    maps = hops.evaluate(BVSE("Li+", verbose=False))
+    assert calls == [len(atoms)] and len(maps) == len(hops)
+    assert all(np.array_equal(h.atoms.get_array("oxi_states"), q) for h in hops)
+
+
+def test_bvse_per_element_oxidation_states_need_no_assignment(unit_cell_only_assignment):
+    atoms, q, calls = unit_cell_only_assignment
+    pl = Percolator(atoms, "Li", upper_bound=6.3)
+    s, t, *o = pl.unique_edges(pl.cutoff_search(1, 0.5), 0.5)[0]
+    Hop(atoms, s, t, o).evaluate(BVSE("Li+", oxidation_states={"Li": 1, "Fe": 2, "P": 5, "O": -2}, verbose=False),
+                                 resolution=0.3)
+    assert calls == []

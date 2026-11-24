@@ -44,7 +44,9 @@ class Hop:
     Parameters
     ----------
     atoms : ase.Atoms
-        Unit cell (with any per-atom arrays the energy model needs, e.g. oxi_states).
+        Unit cell (with any per-atom arrays the energy model needs). For BVSE without
+        oxi_states, the oxidation states are assigned on this cell (no vacancy) and passed
+        on to the hop's cells; ``set_oxidation_states`` sets them explicitly.
 
     source, target : int
         Indices of the hopping ion and of the target site in ``atoms``.
@@ -110,7 +112,10 @@ class Hop:
             self.scale = tuple(int(n) for n in self.supercell_size)
         else:
             self.scale = _supercell_scale(self.atoms.cell, self.supercell_cutoff)
+        self._build()
 
+    def _build(self):
+        """Supercell, template (vacancy + hopping ion) and host from self.atoms (arrays carried over)."""
         self.supercell = repeated_supercell(self.atoms, self.scale)
         edge = Edge(self.supercell, self.source, self.target, np.asarray(self.offset) / np.asarray(self.scale))
         self.template = edge.interpolate(2, center=False)[0]
@@ -118,6 +123,26 @@ class Hop:
         self.p0 = self.template.positions[self.moving].copy()
         self.p1 = self.p0 + (edge.p2 - edge.p1)
         self.host = self.template[[k for k in range(len(self.template)) if k != self.moving]]
+        self._grids.clear()
+
+    def set_oxidation_states(self, charges):
+        """Oxidation states of the unit cell (one per atom of ``atoms``), passed on to the hop's cells."""
+        charges = np.asarray(charges, dtype=int)
+        if charges.shape != (len(self.atoms),):
+            raise ValueError(f"Expected {len(self.atoms)} oxidation states, got {charges.shape}")
+        self.atoms.set_array("oxi_states", charges)
+        self._build()
+
+    def _prepare_model(self, model):
+        """
+        BVSE needs oxidation states. Assigned on the vacancy cells they fail (a vacancy breaks the
+        charge balance), so they are resolved once on the unit cell and inherited by the hop's cells.
+        """
+        if not hasattr(model, "resolve_oxidation_states") or "oxi_states" in self.atoms.arrays:
+            return
+        if isinstance(model.oxidation_states, dict):   # per element: valid for any cell
+            return
+        self.set_oxidation_states(model.resolve_oxidation_states(self.atoms))
 
     def __repr__(self):
         symbol = self.atoms[self.source].symbol
@@ -172,6 +197,7 @@ class Hop:
         -------
         HopMap
         """
+        self._prepare_model(model)
         grid = self.grid(resolution, r_min)
         emap = grid.evaluate(model, supercell_size=(1, 1, 1), region=self.region(tube))
         return HopMap.from_energy_map(emap, self, tube=tube)
@@ -348,6 +374,12 @@ class Hops:
         -------
         HopMaps, in the order of the edges
         """
+        if hasattr(model, "resolve_oxidation_states") and "oxi_states" not in self.atoms.arrays \
+                and not isinstance(model.oxidation_states, dict):
+            charges = model.resolve_oxidation_states(self.atoms)   # once for all hops, on the unit cell
+            self.atoms.set_array("oxi_states", charges)
+            for hop in self.hops:
+                hop.set_oxidation_states(charges)
         maps = [hop.evaluate(model, **self._settings()) for hop in tqdm(self.hops, desc="hops", disable=not progress)]
         return HopMaps(maps)
 
