@@ -18,7 +18,9 @@ percolation barriers. It also generates defect configurations and training sets 
     - [Forces, stress and descriptors](#forces-stress-and-descriptors)
     - [Saving and visualization](#saving-and-visualization)
     - [Local minima and percolation radii](#local-minima-and-percolation-radii)
-- [NEB paths of vacancy-assisted hops](#neb-paths-of-vacancy-assisted-hops)
+    - [Evaluating part of the cell](#evaluating-part-of-the-cell)
+    - [Paths between two points](#paths-between-two-points)
+    - [NEB paths of vacancy-assisted hops](#neb-paths-of-vacancy-assisted-hops)
     - [Interactive view](#interactive-view)
     - [Defect configurations](#defect-configurations)
     - [Training datasets](#training-datasets)
@@ -113,31 +115,87 @@ emap.local_minima(min_distance=2.0, energy_window=0.5)
 grid.percolation_radii()
 ```
 
+## Evaluating part of the cell
+
+Only points inside `region` are evaluated: a boolean array of shape `grid.mesh_shape`, or a
+function of the Cartesian positions of the mesh points. Their energies also fill the symmetry-equivalent
+points; all other points are `+inf`.
+
+```python
+center = atoms.positions[0]
+region = lambda pts: np.linalg.norm(pts - center, axis=1) < 3.0
+emap = grid.evaluate(calc, region=region)
+
+grid.region_points(region)                          # the points that will be evaluated
+grid.prepare_configurations(region=region)          # external calculations of a region...
+emap = grid.load("processed.xyz", region=region)    # ...and their energies
+```
+
+## Paths between two points
+
+Lowest-barrier path of the mobile ion between two sites of a map: the lowest energy at which
+they are connected, and the shortest route through points at or below it, resampled to
+equally spaced points.
+
+```python
+(p0, e0, _), (p1, e1, _) = emap.local_minima(min_distance=2.0)[:2]
+path = emap.path(p0, p1, n_images=12)
+path.barrier, path.level, path.saddle, path.points   # eV, eV, (3,), (12, 3)
+```
+
+`p1 - p0` must be the displacement itself (shorter than half the cell).
+
 ## NEB paths of vacancy-assisted hops
 
-The energy landscape of each hop of a percolation network (from [ions](https://github.com/dembart/ions)),
-computed with the hopping ion removed and a vacancy on the target site, gives the initial path of its NEB.
-All hops share one supercell, so their NEB energies can be compared.
+Initial NEB paths for the hops of a percolation network (from [ions](https://github.com/dembart/ions)).
+For each hop the mobile ion is sampled in the hop's supercell without the hopping ion and with a
+vacancy on the target site (the other mobile ions stay), only in a tube around the hop; its lowest-barrier
+path gives the NEB images. All hops share one supercell, so their NEB energies can be compared, and every
+result keeps the order of the edges.
 
 ```python
 from ions import Percolator
 
 pl = Percolator(atoms, "Na", upper_bound=5.0)
 cutoff = pl.cutoff_search(3, bottleneck_radius=0.5)
-edges = pl.unique_edges(cutoff, 0.5)
+edges = pl.unique_edges(cutoff, 0.5)                       # [source, target, ox, oy, oz]
 
 hops = gm.Hops(atoms, "Na", edges, supercell_cutoff=8.0, resolution=0.2, r_min=0.8, tube=2.5)
-maps = hops.evaluate(gm.BVSE("Na+"))                       # or an ASE calculator / predictor
-maps.barriers                                              # grid estimates, in the order of edges
-maps.write_paths("neb_inputs", format="vasp", n_images=12) # hop_000/00/POSCAR, ... or extxyz
+hops.summary()
+maps = hops.evaluate(gm.BVSE("Na+"))                       # or an ASE calculator / predictor, as Grid.evaluate
+maps.barriers                                              # grid estimates (eV)
+paths = maps.paths(n_images=12)                            # paths[i].images(): list of Atoms for edges[i]
+maps.write_paths("neb_inputs", format="vasp")              # hop_000/00/POSCAR, ...; or "extxyz" + paths.json
 
-# NEB (keep the given images) -> emins, emaxs per hop, in the order of edges
+# NEB of every hop -> emins, emaxs in the order of edges
 pl.find_percolation_barriers(cutoff, 0.5, emins, emaxs, method="naive")
 ```
 
-Only points within `tube` of each hop are evaluated (`Grid.evaluate(region=...)`). A single hop:
-`gm.Hop(atoms, source, target, offset).evaluate(model).path().images()`; any map: `emap.path(start, end)`.
-External calculations: `hops.prepare_configurations("cfgs.xyz")` and `hops.load("processed.xyz")`.
+One hop:
+
+```python
+hop = gm.Hop(atoms, source=0, target=7, offset=(0, 0, -1), supercell_cutoff=8.0)
+hmap = hop.evaluate(gm.BVSE("Na+"), resolution=0.2, tube=2.5)
+hmap.write("hop.grd")
+path = hmap.path(n_images=12)
+path.write("path.xyz")
+
+from ions.study import ase_neb_runner, bvse_calc_factory, prepare_bvse
+run = ase_neb_runner(bvse_calc_factory(), shared_calculator=False, interpolate=None)   # keep the path
+result = run(path.images())                                # atoms need prepare_bvse(...) for BVSE
+```
+
+- `hop.template` is the first image (a boolean `"moving"` array marks the hopping ion), `hop.host` is what
+  the mobile ion sees on the grid, `hop.p0`, `hop.p1` are the two sites.
+- Keep the images as given in the NEB (no re-interpolation); IDPP is not needed.
+- `tube` (Angstrom) bounds the evaluated region: 2.5 gave the same paths as the whole cell in the tests;
+  raise it if `path()` reports that the sites are not connected.
+- For MLIPs use a larger `r_min` (~1.2) to skip very close contacts, and mind the cost: every point
+  is one evaluation of the host supercell; a coarser `resolution` or a narrower `tube` cuts it.
+- With BVSE on a NaGaPO4F hop, grid path + NEB took 4 s against 13 s for linear + IDPP + NEB
+  (IDPP alone 6.6 s; 40 vs 68 NEB steps), and always reached the lower of the hop's two channels.
+- External calculations: `hops.prepare_configurations("cfgs.xyz")` (`info["hop_index"]`, `info["grid_index"]`),
+  then `hops.load("processed.xyz")`. Maps: `maps.save("maps")`, `gm.HopMaps.load("maps", hops)`.
 
 ## Interactive view
 
