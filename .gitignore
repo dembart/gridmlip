@@ -8,6 +8,7 @@ scripts/*
 
 misc
 data
+!notebooks/data
 BVEL13k
 
 gridmlip/__pycache__/*
@@ -19,6 +20,8 @@ gridmlip/__pycache__/*
 *.cube
 *.cif
 !example_files/*.cif
+!notebooks/data/
+!notebooks/data/*.cif
 *.xyz
 test
 *.txt
