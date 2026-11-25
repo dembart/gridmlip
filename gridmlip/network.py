@@ -66,7 +66,7 @@ def _voronoi_faces(points, cell, site):
     return faces
 
 
-def voronoi_edges(atoms, specie, min_face: float = 0.02, max_length: float | None = None, dim: int = 3):
+def voronoi_edges(atoms, specie, min_face: float = 0.02, max_length: float = 8.0):
     """
     Hops between Voronoi neighbours of the mobile sublattice (the framework is ignored).
     A hop [source, target, ox, oy, oz] goes from site ``source`` of the unit cell to site ``target``
@@ -82,14 +82,11 @@ def voronoi_edges(atoms, specie, min_face: float = 0.02, max_length: float | Non
 
     min_face: float, 0.02 by default
         drop hops through faces smaller than this fraction of the site's Voronoi cell surface
-        (tiny faces join distant sites that are separated by others)
+        (tiny faces join distant sites that are separated by others); dropped hops are taken back,
+        largest faces first, while the network percolates in fewer dimensions than without the filter
 
-    max_length: float, optional
-        drop hops longer than this (Angstrom)
-
-    dim: int, 3 by default
-        the network must percolate in at least this many dimensions (see ``periodicity``),
-        otherwise ValueError
+    max_length: float, 8.0 by default
+        no hops longer than this (Angstrom); the network may percolate in fewer dimensions then
 
     Returns
     -------
@@ -100,22 +97,26 @@ def voronoi_edges(atoms, specie, min_face: float = 0.02, max_length: float | Non
     if len(sites) == 0:
         raise ValueError(f"No atoms of specie {specie} in the structure")
     points = atoms.positions[sites]
-    kept = set()
+    fraction = {}
     for k in range(len(sites)):
         faces = _voronoi_faces(points, atoms.cell, k)
         surface = sum(f[2] for f in faces)
         for t, off, area, length in faces:
-            if area < min_face * surface or (max_length is not None and length > max_length):
+            if length > max_length:
                 continue
-            s_, t_ = int(sites[k]), int(sites[t])
-            kept.add((s_, t_) + off)
-            kept.add((t_, s_) + tuple(-x for x in off))
-    edges = np.array(sorted(kept), dtype=int).reshape(-1, 5)
-    d = periodicity(edges)
-    if d < dim:
-        raise ValueError(f"The Voronoi hop network percolates in {d}D, not {dim}D: lower min_face, "
-                         f"raise max_length or pass dim={d}")
-    return edges
+            key = (int(sites[k]), int(sites[t])) + off
+            back = (int(sites[t]), int(sites[k])) + tuple(-x for x in off)
+            share = max(area / surface, fraction.get(key, 0.0))
+            fraction[key] = fraction[back] = share
+    edges = lambda keys: np.array(sorted(keys), dtype=int).reshape(-1, 5)
+    kept = {k for k, f in fraction.items() if f >= min_face}
+    full = periodicity(edges(fraction))
+    dropped = sorted({round(f, 6) for k, f in fraction.items() if f < min_face}, reverse=True)
+    for share in dropped:
+        if periodicity(edges(kept)) >= full:
+            break
+        kept |= {k for k, f in fraction.items() if round(f, 6) == share}
+    return edges(kept)
 
 
 def _component_dims(edges):

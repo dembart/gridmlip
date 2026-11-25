@@ -147,48 +147,33 @@ path.barrier, path.level, path.saddle, path.points   # eV, eV, (3,), (12, 3)
 
 ## NEB paths of vacancy-assisted hops
 
-Initial NEB paths for the hops of a percolation network (from [ions](https://github.com/dembart/ions)).
-For each hop the mobile ion is sampled in the hop's supercell without the hopping ion and with a
-vacancy on the target site (the other mobile ions stay), only in a tube around the hop; its lowest-barrier
-path gives the NEB images. All hops share one supercell, so their NEB energies can be compared, and every
-result keeps the order of the edges.
+Initial NEB paths for the hops of a percolation network. For each hop the mobile ion is sampled in the
+hop's supercell without the hopping ion and with a vacancy on the target site (the other mobile ions stay),
+only in a tube around the hop; its lowest-barrier path gives the NEB images. All hops share one supercell,
+so their NEB energies can be compared, and every result keeps the order of the edges.
 
 ```python
-from ions import Percolator
+hops = gm.Hops.from_mincut_maxdim(atoms, "Na", bottleneck_radius=0.5)   # shortest cutoff of the highest dimensionality
+hops = gm.Hops.from_voronoi(atoms, "Na", min_face=0.02, max_length=8.0) # or Voronoi neighbours of the mobile sublattice
+hops = gm.Hops(atoms, "Na", edges)                                      # or your own [source, target, ox, oy, oz]
 
-pl = Percolator(atoms, "Na", upper_bound=5.0)
-cutoff = pl.cutoff_search(3, bottleneck_radius=0.5)
-edges = pl.unique_edges(cutoff, 0.5)                       # [source, target, ox, oy, oz]
-
-hops = gm.Hops(atoms, "Na", edges, supercell_cutoff=8.0, resolution=0.2, r_min=0.8, tube=2.5)
 hops.summary()
 maps = hops.evaluate(gm.BVSE("Na+"))                       # or an ASE calculator / predictor, as Grid.evaluate
 maps.barriers                                              # grid estimates (eV)
+maps.percolation_barriers()                                # {'e1d', 'e2d', 'e3d'} of the hop network (eV)
 paths = maps.paths(n_images=12)                            # paths[i].images(): list of Atoms for edges[i]
 maps.write_paths("neb_inputs", format="vasp")              # hop_000/00/POSCAR, ...; or "extxyz" + paths.json
-maps.percolation_barriers()                                # {'e1d', 'e2d', 'e3d'} of the hop network (eV)
-
-# NEB of every hop -> emins, emaxs in the order of edges
-pl.find_percolation_barriers(cutoff, 0.5, emins, emaxs, method="naive")
-```
-
-Without ions' cutoff: hops between Voronoi neighbours of the mobile sublattice (the framework is ignored),
-one per symmetry class; the network must percolate in `dim` dimensions (3 by default).
-
-```python
-hops = gm.Hops.from_voronoi(atoms, "Li", min_face=0.02, max_length=None, dim=3, tube=2.5)
-hops = gm.Hops.from_mincut_maxdim(atoms, "Li", bottleneck_radius=0.5)   # or ions' shortest cutoff of the highest dimensionality
-maps = hops.evaluate(gm.BVSE("Li+"))
-maps.percolation_barriers()                     # each hop spans min(site energies) .. connecting level
-maps[0].view(path=maps[0].path(n_images=9))     # one hop, centered, its NEB images as a trajectory
+maps[0].view(path=maps[0].path(n_images=9))                # one hop, centered, its NEB images as a trajectory
 
 # NEB energies instead of the grid estimates (one per hop of `hops`)
 gm.network.percolation_barriers(hops.network, emins[hops.inverse], emaxs[hops.inverse])
 ```
 
-`min_face` drops hops through faces smaller than that fraction of the site's Voronoi surface (they join
-sites separated by others). The barrier is the lowest level at which the hops percolate minus the lowest
-site energy of the percolating component.
+Every option of `Hops` (`supercell_cutoff`, `resolution`, `r_min`, `tube`) also goes to `from_mincut_maxdim`
+and `from_voronoi`. `from_voronoi` ignores the framework; `min_face` drops hops through faces smaller than that
+fraction of the site's Voronoi surface (taken back if the network would lose a dimension), `max_length` drops
+longer hops. The barrier is the lowest level at which the hops percolate minus the
+lowest site energy of the percolating component.
 
 One hop:
 

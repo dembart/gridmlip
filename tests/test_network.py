@@ -22,7 +22,7 @@ def test_periodicity_counts_translations_per_component():
 @pytest.mark.parametrize("make, specie", [(nacl, "Na"), (lifepo4, "Li"), (licoo2, "Li"), (limn2o4, "Li")])
 def test_voronoi_network_is_periodic_symmetric_and_closed(make, specie):
     atoms = make()
-    edges = voronoi_edges(atoms, specie)
+    edges = voronoi_edges(atoms, specie, max_length=12.0)
     assert periodicity(edges) == 3
     keys = set(map(tuple, edges))
     assert all((t, s, -a, -b, -c) in keys for s, t, a, b, c in edges)
@@ -42,13 +42,15 @@ def test_voronoi_lifepo4_hops():
     assert len(unique_edges(atoms, edges)[0]) == 3
 
 
-def test_voronoi_filters_must_keep_the_dimensionality():
+def test_voronoi_min_face_keeps_the_dimensionality_max_length_does_not():
     atoms = licoo2()
-    with pytest.raises(ValueError, match="percolates in 2D"):
-        voronoi_edges(atoms, "Li", min_face=0.05)
-    assert periodicity(voronoi_edges(atoms, "Li", min_face=0.05, dim=2)) == 2
-    edges = voronoi_edges(nacl(), "Na", max_length=3.5, dim=0)
-    assert len(edges) == 0
+    full = voronoi_edges(atoms, "Li", min_face=0.0)
+    edges = voronoi_edges(atoms, "Li", min_face=0.05)
+    assert periodicity(edges) == periodicity(full) == 3 and len(edges) == len(full)
+    assert periodicity(voronoi_edges(atoms, "Li", max_length=3.0)) == 2
+    assert len(voronoi_edges(nacl(), "Na", max_length=3.5)) == 0
+    with pytest.raises(ValueError, match="No Voronoi neighbours"):
+        Hops.from_voronoi(nacl(), "Na", max_length=3.5)
 
 
 def test_percolation_barriers_of_a_toy_network():

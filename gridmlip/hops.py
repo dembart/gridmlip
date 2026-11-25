@@ -402,16 +402,15 @@ class Hops:
         self.periodicity = _network.periodicity(self.network)
 
     @classmethod
-    def from_voronoi(cls, atoms, specie, min_face: float = 0.02, max_length: float | None = None, dim: int = 3,
-                     symprec: float = 1e-3, **kwargs):
+    def from_voronoi(cls, atoms, specie, min_face: float = 0.02, max_length: float = 8.0, symprec: float = 1e-3,
+                     **kwargs):
         """
         Hops between Voronoi neighbours of the mobile sublattice, one per symmetry class.
 
         Parameters
         ----------
-        min_face, max_length, dim
-            see ``gridmlip.network.voronoi_edges``: the network must percolate in ``dim`` dimensions
-            (3 by default), otherwise ValueError
+        min_face, max_length
+            see ``gridmlip.network.voronoi_edges``
 
         symprec: float, 1e-3 by default
             symmetry tolerance
@@ -424,7 +423,9 @@ class Hops:
         hops = Hops.from_voronoi(atoms, "Li", tube=2.5)
         hops.evaluate(gridmlip.BVSE("Li+")).percolation_barriers()
         """
-        edges = _network.voronoi_edges(atoms, specie, min_face=min_face, max_length=max_length, dim=dim)
+        edges = _network.voronoi_edges(atoms, specie, min_face=min_face, max_length=max_length)
+        if len(edges) == 0:
+            raise ValueError(f"No Voronoi neighbours of {specie} within max_length={max_length} A")
         unique, _ = _network.unique_edges(atoms, edges, symprec=symprec)
         return cls(atoms, specie, unique, symprec=symprec, **kwargs)
 
