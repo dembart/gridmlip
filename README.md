@@ -198,10 +198,6 @@ hmap = hop.evaluate(gm.BVSE("Na+"), resolution=0.2, tube=2.5)
 hmap.write("hop.grd")
 path = hmap.path(n_images=12)
 path.write("path.xyz")
-
-from ions.study import ase_neb_runner, bvse_calc_factory, prepare_bvse
-run = ase_neb_runner(bvse_calc_factory(), shared_calculator=False, interpolate=None)   # keep the path
-result = run(path.images())                                # atoms need prepare_bvse(...) for BVSE
 ```
 
 - Keep the images as given in the NEB (no re-interpolation); IDPP is not needed.
