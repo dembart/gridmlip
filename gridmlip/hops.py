@@ -13,6 +13,7 @@ from .grid import Grid, _as_atomic_number
 from .energy_map import EnergyMap
 from .io import read_cfg, read_energies, write_cfg
 from .path import _mic, _write_images
+from . import network as _network
 
 __author__ = "Artem Dembitskiy"
 
@@ -285,8 +286,8 @@ class Hops:
         mobile specie
 
     edges: (N, 5) int array
-        hops [source, target, ox, oy, oz], e.g. ions' ``Percolator.unique_edges(...)``;
-        every result keeps this order
+        inequivalent hops [source, target, ox, oy, oz], e.g. ions' ``Percolator.unique_edges(...)``;
+        every result keeps this order. ``Hops.from_voronoi`` finds them from the Voronoi neighbours.
 
     supercell_cutoff: float, 8.0 by default
         the supercell is at least this thick in every direction (Angstrom)
@@ -298,15 +299,30 @@ class Hops:
         mesh spacing, blocking radius and radius of the region evaluated around each hop
         (Angstrom), see ``Hop.evaluate``
 
+    symprec: float, 1e-3 by default
+        tolerance of the symmetry that expands the edges into the whole network
+
+    Attributes
+    ----------
+    network: (M, 5) int array
+        every hop symmetry-equivalent to one of the edges (with its reverse)
+
+    inverse: (M,) int array
+        network[k] is equivalent to edges[inverse[k]]
+
+    periodicity: int
+        dimensionality of the network (0 to 3)
+
     Example
     -------
     pl = Percolator(atoms, "Na", upper_bound=5.0)
     cutoff = pl.cutoff_search(3, 0.5)
-    hops = Hops(atoms, "Na", pl.unique_edges(cutoff, 0.5))
+    hops = Hops(atoms, "Na", pl.unique_edges(cutoff, 0.5))    # or Hops.from_voronoi(atoms, "Na")
     maps = hops.evaluate(gridmlip.BVSE("Na+"))
+    maps.percolation_barriers()                               # from the grid paths
     maps.write_paths("neb_inputs", format="vasp")
     # NEB -> emins, emaxs in the order of the edges
-    pl.find_percolation_barriers(cutoff, 0.5, emins, emaxs, method="naive")
+    gridmlip.network.percolation_barriers(hops.network, emins[hops.inverse], emaxs[hops.inverse])
     """
 
     def __init__(
@@ -319,6 +335,7 @@ class Hops:
         resolution: float = 0.2,
         r_min: float = 0.8,
         tube: float = 2.5,
+        symprec: float = 1e-3,
     ):
         self.atoms = atoms.copy()
         self.specie = _as_atomic_number(specie)
@@ -334,6 +351,35 @@ class Hops:
         wrong = [h for h in self.hops if h.specie != self.specie]
         if wrong:
             raise ValueError(f"Hops of another specie than {self.specie}: {wrong}")
+        self.network, self.inverse = _network.expand_edges(self.atoms, self.edges, symprec=symprec)
+        self.periodicity = _network.periodicity(self.network)
+
+    @classmethod
+    def from_voronoi(cls, atoms, specie, min_face: float = 0.02, max_length: float | None = None, dim: int = 3,
+                     symprec: float = 1e-3, **kwargs):
+        """
+        Hops between Voronoi neighbours of the mobile sublattice, one per symmetry class.
+
+        Parameters
+        ----------
+        min_face, max_length, dim
+            see ``gridmlip.network.voronoi_edges``: the network must percolate in ``dim`` dimensions
+            (3 by default), otherwise ValueError
+
+        symprec: float, 1e-3 by default
+            symmetry tolerance
+
+        **kwargs
+            any Hops option: supercell_cutoff, resolution, r_min, tube, ...
+
+        Example
+        -------
+        hops = Hops.from_voronoi(atoms, "Li", tube=2.5)
+        hops.evaluate(gridmlip.BVSE("Li+")).percolation_barriers()
+        """
+        edges = _network.voronoi_edges(atoms, specie, min_face=min_face, max_length=max_length, dim=dim)
+        unique, _ = _network.unique_edges(atoms, edges, symprec=symprec)
+        return cls(atoms, specie, unique, symprec=symprec, **kwargs)
 
     def __len__(self):
         return len(self.hops)
@@ -353,13 +399,14 @@ class Hops:
 
     def summary(self):
         """Print the hops: source -> target, offset, length and points to evaluate."""
-        print(f"Hops ({len(self)}), supercell {self.scale}")
+        print(f"Hops ({len(self)}), supercell {self.scale}, network of {len(self.network)} hops ({self.periodicity}D)")
         print("────────────────────────────────────────────────────────")
         for i, hop in enumerate(self.hops):
             n = len(hop.grid(self.resolution, self.r_min).region_points(hop.region(self.tube)))
             symbol = self.atoms[hop.source].symbol
+            m = int(np.sum(self.inverse == i))
             print(f"  {i:3d}  {symbol}{hop.source} -> {symbol}{hop.target} {str(hop.offset):12s} "
-                  f"{hop.length:6.3f} A  {n:7,} points")
+                  f"{hop.length:6.3f} A  x{m:<3d} {n:7,} points")
         print("────────────────────────────────────────────────────────\n")
 
     def evaluate(self, model, progress: bool = False):
@@ -377,7 +424,7 @@ class Hops:
             for hop in self.hops:
                 hop.set_oxidation_states(charges)
         maps = [hop.evaluate(model, **self._settings()) for hop in tqdm(self.hops, desc="hops", disable=not progress)]
-        return HopMaps(maps)
+        return HopMaps(maps, self)
 
     def prepare_configurations(self, filename: str | None = None, progress: bool = False):
         """
@@ -434,7 +481,7 @@ class Hops:
         if energies.size != sum(counts):
             raise ValueError(f"Expected {sum(counts)} energies (one per configuration), got {energies.size}")
         chunks = np.split(energies, np.cumsum(counts)[:-1])
-        return HopMaps([hop.load(e, **self._settings()) for hop, e in zip(self.hops, chunks)])
+        return HopMaps([hop.load(e, **self._settings()) for hop, e in zip(self.hops, chunks)], self)
 
 
 class HopMaps:
@@ -449,8 +496,9 @@ class HopMaps:
     maps.write_paths("neb_inputs", format="vasp")       # NEB images + paths.json
     """
 
-    def __init__(self, maps):
+    def __init__(self, maps, hops=None):
         self.maps = list(maps)
+        self.hops = hops
 
     def __len__(self):
         return len(self.maps)
@@ -463,6 +511,24 @@ class HopMaps:
 
     def __repr__(self):
         return f"HopMaps(n_hops={len(self)})"
+
+    def percolation_barriers(self, well_radius: float = 0.5, margin: float = 0.0):
+        """
+        1D, 2D and 3D percolation barriers of the hop network from the grid paths: each hop spans
+        from the lower of its two site energies to its connecting level (see
+        ``gridmlip.network.percolation_barriers``).
+
+        Returns
+        -------
+        dict {'e1d': float, 'e2d': float, 'e3d': float}; np.inf where the network does not percolate
+        """
+        if self.hops is None:
+            raise ValueError("percolation_barriers() needs the Hops: HopMaps(maps, hops) or HopMaps.load(folder, hops)")
+        paths = self.paths(n_images=2, well_radius=well_radius, margin=margin)
+        emins = np.array([min(p.e_start, p.e_end) for p in paths])
+        emaxs = np.array([p.level for p in paths])
+        inv = self.hops.inverse
+        return _network.percolation_barriers(self.hops.network, emins[inv], emaxs[inv])
 
     def paths(self, n_images: int = 12, well_radius: float = 0.5, margin: float = 0.0):
         """
@@ -528,4 +594,4 @@ class HopMaps:
         for i, hop in enumerate(hops):
             emap = EnergyMap.load(folder / f"hop_{i:03d}.npz")
             maps.append(HopMap(emap.values, emap.atoms, hop, specie=emap.specie, info=emap.info))
-        return cls(maps)
+        return cls(maps, hops)

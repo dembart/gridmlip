@@ -166,10 +166,28 @@ maps = hops.evaluate(gm.BVSE("Na+"))                       # or an ASE calculato
 maps.barriers                                              # grid estimates (eV)
 paths = maps.paths(n_images=12)                            # paths[i].images(): list of Atoms for edges[i]
 maps.write_paths("neb_inputs", format="vasp")              # hop_000/00/POSCAR, ...; or "extxyz" + paths.json
+maps.percolation_barriers()                                # {'e1d', 'e2d', 'e3d'} of the hop network (eV)
 
 # NEB of every hop -> emins, emaxs in the order of edges
 pl.find_percolation_barriers(cutoff, 0.5, emins, emaxs, method="naive")
 ```
+
+Without ions' cutoff: hops between Voronoi neighbours of the mobile sublattice (the framework is ignored),
+one per symmetry class; the network must percolate in `dim` dimensions (3 by default).
+
+```python
+hops = gm.Hops.from_voronoi(atoms, "Li", min_face=0.02, max_length=None, dim=3, tube=2.5)
+hops.network, hops.inverse, hops.periodicity    # all hops of the network, their class, dimensionality
+maps = hops.evaluate(gm.BVSE("Li+"))
+maps.percolation_barriers()                     # each hop spans min(site energies) .. connecting level
+
+# NEB energies instead of the grid estimates (one per hop of `hops`)
+gm.network.percolation_barriers(hops.network, emins[hops.inverse], emaxs[hops.inverse])
+```
+
+`min_face` drops hops through faces smaller than that fraction of the site's Voronoi surface (they join
+sites separated by others). The barrier is the lowest level at which the hops percolate minus the lowest
+site energy of the percolating component.
 
 One hop:
 
