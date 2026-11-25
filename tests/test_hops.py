@@ -112,15 +112,17 @@ def test_hops_keep_order_and_one_supercell(lfp_hops):
 
 
 def test_hop_paths_and_images(lfp_hops):
-    paths = lfp_hops.evaluate(BVSE("Li+", verbose=False)).paths(n_images=7)
-    assert len(paths) == len(lfp_hops)
-    images = paths.images()[0]
+    maps = lfp_hops.evaluate(BVSE("Li+", verbose=False))
+    paths = maps.paths(n_images=7)
+    assert len(paths) == len(lfp_hops) and all(p.hop is h for p, h in zip(paths, lfp_hops))
+    images = paths[0].images()
     hop = lfp_hops[0]
     assert len(images) == 7
     assert all(len(im) == len(hop.template) and im.get_array("moving").sum() == 1 for im in images)
     assert np.allclose(images[0].positions[hop.moving], hop.p0)
     assert np.allclose(images[-1].positions[hop.moving], hop.p1)
-    assert np.all(np.isfinite(paths.barriers)) and np.all(paths.barriers > 0)
+    assert np.allclose(maps.barriers, [p.barrier for p in paths])
+    assert np.all(np.isfinite(maps.barriers)) and np.all(maps.barriers > 0)
 
 
 def test_hops_external_roundtrip(lfp_hops):
@@ -142,13 +144,12 @@ def test_maps_save_load_and_paths_write(lfp_hops, tmp_path):
     again = HopMaps.load(tmp_path / "maps", lfp_hops)
     assert np.array_equal(again[0].values, maps[0].values)
 
-    paths = again.paths(n_images=5)
-    paths.write(tmp_path / "xyz")
+    paths = again.write_paths(tmp_path / "xyz", n_images=5)
     assert len(read(tmp_path / "xyz" / "hop_000.xyz", ":")) == 5
     summary = json.loads((tmp_path / "xyz" / "paths.json").read_text())
-    assert summary[0]["barrier"] == pytest.approx(paths.barriers[0])
+    assert summary[0]["barrier"] == pytest.approx(paths[0].barrier)
 
-    paths.write(tmp_path / "vasp", format="vasp")
+    again.write_paths(tmp_path / "vasp", format="vasp", n_images=5)
     assert (tmp_path / "vasp" / "hop_000" / "04" / "POSCAR").exists()
 
 

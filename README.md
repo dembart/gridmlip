@@ -127,9 +127,9 @@ cutoff = pl.cutoff_search(3, bottleneck_radius=0.5)
 edges = pl.unique_edges(cutoff, 0.5)
 
 hops = gm.Hops(atoms, "Na", edges, supercell_cutoff=8.0, resolution=0.2, r_min=0.8, tube=2.5)
-paths = hops.evaluate(gm.BVSE("Na+")).paths(n_images=12)   # or an ASE calculator / predictor
-paths.barriers                                             # grid estimates, in the order of edges
-paths.write("neb_inputs", format="vasp")                   # hop_000/00/POSCAR, ... or extxyz
+maps = hops.evaluate(gm.BVSE("Na+"))                       # or an ASE calculator / predictor
+maps.barriers                                              # grid estimates, in the order of edges
+maps.write_paths("neb_inputs", format="vasp", n_images=12) # hop_000/00/POSCAR, ... or extxyz
 
 # NEB (keep the given images) -> emins, emaxs per hop, in the order of edges
 pl.find_percolation_barriers(cutoff, 0.5, emins, emaxs, method="naive")

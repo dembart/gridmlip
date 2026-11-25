@@ -172,7 +172,6 @@ class Hop:
                                     r_min=r_min, symprec=None, empty_framework=False)
         return self._grids[key]
 
-    # ------------------------------------------------------------ evaluation
 
     def evaluate(self, model, *, resolution: float = 0.2, r_min: float = 0.8, tube: float = 2.5):
         """
@@ -269,8 +268,7 @@ class HopMap(EnergyMap):
         start = self.hop.p0 if start is None else start
         end = self.hop.p1 if end is None else end
         path = super().path(start, end, n_images=n_images, well_radius=well_radius, margin=margin)
-        path.hop = self.hop
-        return path
+        return dataclasses.replace(path, hop=self.hop)
 
 
 class Hops:
@@ -305,8 +303,8 @@ class Hops:
     pl = Percolator(atoms, "Na", upper_bound=5.0)
     cutoff = pl.cutoff_search(3, 0.5)
     hops = Hops(atoms, "Na", pl.unique_edges(cutoff, 0.5))
-    paths = hops.evaluate(gridmlip.BVSE("Na+")).paths()
-    paths.write("neb_inputs", format="vasp")
+    maps = hops.evaluate(gridmlip.BVSE("Na+"))
+    maps.write_paths("neb_inputs", format="vasp")
     # NEB -> emins, emaxs in the order of the edges
     pl.find_percolation_barriers(cutoff, 0.5, emins, emaxs, method="naive")
     """
@@ -363,8 +361,6 @@ class Hops:
             print(f"  {i:3d}  {symbol}{hop.source} -> {symbol}{hop.target} {str(hop.offset):12s} "
                   f"{hop.length:6.3f} A  {n:7,} points")
         print("────────────────────────────────────────────────────────\n")
-
-    # ------------------------------------------------------------ evaluation
 
     def evaluate(self, model, progress: bool = False):
         """
@@ -442,7 +438,16 @@ class Hops:
 
 
 class HopMaps:
-    """Energy maps of ``Hops`` (one HopMap per hop, in the order of the edges)."""
+    """
+    Energy maps of ``Hops`` (one HopMap per hop, in the order of the edges) and their NEB paths.
+
+    Example
+    -------
+    maps = hops.evaluate(model)
+    maps.barriers                                       # grid estimates (eV)
+    maps.paths(n_images=12)                             # list of Path; paths[i].images() for edges[i]
+    maps.write_paths("neb_inputs", format="vasp")       # NEB images + paths.json
+    """
 
     def __init__(self, maps):
         self.maps = list(maps)
@@ -465,9 +470,48 @@ class HopMaps:
 
         Returns
         -------
-        Paths, in the order of the edges
+        list of Path, in the order of the edges
         """
-        return Paths([m.path(n_images=n_images, well_radius=well_radius, margin=margin) for m in self.maps])
+        return [m.path(n_images=n_images, well_radius=well_radius, margin=margin) for m in self.maps]
+
+    @property
+    def barriers(self):
+        """Grid barriers of the hops (eV, default path settings), np.ndarray in the order of the edges."""
+        return np.array([p.barrier for p in self.paths(n_images=2)])
+
+    def write_paths(self, folder, format: str = "extxyz", n_images: int = 12, well_radius: float = 0.5,
+                    margin: float = 0.0):
+        """
+        Write the NEB images of every hop and a summary (paths.json).
+
+        Parameters
+        ----------
+        folder: str or Path
+            output folder: hop_000.xyz, ... for 'extxyz'; hop_000/00/POSCAR, ... for 'vasp'
+
+        format: str, 'extxyz' by default
+            'extxyz' or 'vasp'
+
+        n_images, well_radius, margin
+            path settings, see ``HopMap.path``
+
+        Returns
+        -------
+        list of Path, in the order of the edges
+        """
+        folder = _FilePath(folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        paths = self.paths(n_images=n_images, well_radius=well_radius, margin=margin)
+        summary = []
+        for i, (m, p) in enumerate(zip(self.maps, paths)):
+            name = f"hop_{i:03d}.xyz" if format == "extxyz" else f"hop_{i:03d}"
+            _write_images(p.images(), folder / name, format)
+            hop = m.hop
+            summary.append({"hop": i, "file": name, "source": hop.source, "target": hop.target,
+                            "offset": list(hop.offset), "supercell": list(hop.scale),
+                            "length": hop.length, "barrier": p.barrier, "level": p.level})
+        (folder / "paths.json").write_text(json.dumps(summary, indent=1))
+        return paths
 
     def save(self, folder):
         """Save the maps as hop_000.npz, hop_001.npz, ... (reload with HopMaps.load)."""
@@ -485,64 +529,3 @@ class HopMaps:
             emap = EnergyMap.load(folder / f"hop_{i:03d}.npz")
             maps.append(HopMap(emap.values, emap.atoms, hop, specie=emap.specie, info=emap.info))
         return cls(maps)
-
-
-class Paths:
-    """
-    NEB starting paths of ``Hops`` (one Path per hop, in the order of the edges).
-
-    Example
-    -------
-    paths = hops.evaluate(model).paths(n_images=12)
-    paths.barriers          # grid estimates
-    paths.images()          # images()[i] belongs to edges[i]
-    paths.write("neb_inputs", format="vasp")
-    """
-
-    def __init__(self, paths):
-        self.paths = list(paths)
-
-    def __len__(self):
-        return len(self.paths)
-
-    def __getitem__(self, i):
-        return self.paths[i]
-
-    def __iter__(self):
-        return iter(self.paths)
-
-    def __repr__(self):
-        return f"Paths(n_hops={len(self)}, barriers={np.round(self.barriers, 3).tolist()})"
-
-    @property
-    def barriers(self):
-        """Grid barriers of the hops (eV), np.ndarray in the order of the edges."""
-        return np.array([p.barrier for p in self.paths])
-
-    def images(self):
-        """NEB images of every hop: list (per hop) of lists of ase.Atoms."""
-        return [p.images() for p in self.paths]
-
-    def write(self, folder, format: str = "extxyz"):
-        """
-        Write the NEB images of every hop and a summary (paths.json).
-
-        Parameters
-        ----------
-        folder: str or Path
-            output folder: hop_000.xyz, ... for 'extxyz'; hop_000/00/POSCAR, ... for 'vasp'
-
-        format: str, 'extxyz' by default
-            'extxyz' or 'vasp'
-        """
-        folder = _FilePath(folder)
-        folder.mkdir(parents=True, exist_ok=True)
-        summary = []
-        for i, p in enumerate(self.paths):
-            name = f"hop_{i:03d}.xyz" if format == "extxyz" else f"hop_{i:03d}"
-            _write_images(p.images(), folder / name, format)
-            hop = p.hop
-            summary.append({"hop": i, "file": name, "source": hop.source, "target": hop.target,
-                            "offset": list(hop.offset), "supercell": list(hop.scale),
-                            "length": hop.length, "barrier": p.barrier, "level": p.level})
-        (folder / "paths.json").write_text(json.dumps(summary, indent=1))
