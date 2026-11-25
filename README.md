@@ -177,7 +177,6 @@ one per symmetry class; the network must percolate in `dim` dimensions (3 by def
 
 ```python
 hops = gm.Hops.from_voronoi(atoms, "Li", min_face=0.02, max_length=None, dim=3, tube=2.5)
-hops.network, hops.inverse, hops.periodicity    # all hops of the network, their class, dimensionality
 maps = hops.evaluate(gm.BVSE("Li+"))
 maps.percolation_barriers()                     # each hop spans min(site energies) .. connecting level
 
@@ -203,15 +202,10 @@ run = ase_neb_runner(bvse_calc_factory(), shared_calculator=False, interpolate=N
 result = run(path.images())                                # atoms need prepare_bvse(...) for BVSE
 ```
 
-- `hop.template` is the first image (a boolean `"moving"` array marks the hopping ion), `hop.host` is what
-  the mobile ion sees on the grid, `hop.p0`, `hop.p1` are the two sites.
 - Keep the images as given in the NEB (no re-interpolation); IDPP is not needed.
-- `tube` (Angstrom) bounds the evaluated region: 2.5 gave the same paths as the whole cell in the tests;
-  raise it if `path()` reports that the sites are not connected.
+- `tube` (Angstrom) bounds the evaluated region; raise it if `path()` reports that the sites are not connected.
 - For MLIPs use a larger `r_min` (~1.2) to skip very close contacts, and mind the cost: every point
   is one evaluation of the host supercell; a coarser `resolution` or a narrower `tube` cuts it.
-- With BVSE on a NaGaPO4F hop, grid path + NEB took 4 s against 13 s for linear + IDPP + NEB
-  (IDPP alone 6.6 s; 40 vs 68 NEB steps), and always reached the lower of the hop's two channels.
 - External calculations: `hops.prepare_configurations("cfgs.xyz")` (`info["hop_index"]`, `info["grid_index"]`),
   then `hops.load("processed.xyz")`. Maps: `maps.save("maps")`, `gm.HopMaps.load("maps", hops)`.
 
