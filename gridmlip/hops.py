@@ -30,6 +30,33 @@ def _supercell_scale(cell, cutoff):
     return tuple(int(n) for n in np.ceil(cutoff / np.array([h1, h2, h3])))
 
 
+def _fitting_scale(atoms, edges):
+    """Smallest repetitions holding every hop: at most half the supercell along each axis."""
+    frac = atoms.get_scaled_positions(wrap=False)
+    edges = np.asarray(edges, dtype=int).reshape(-1, 5)
+    d = np.abs(frac[edges[:, 1]] + edges[:, 2:] - frac[edges[:, 0]])
+    return tuple(int(n) for n in np.maximum(1, np.ceil(2 * d - 1e-6)).max(axis=0, initial=1))
+
+
+def _choose_scale(atoms, edges, supercell_cutoff, supercell_size):
+    """supercell_size as given (checked), or the supercell_cutoff one enlarged where a hop does not fit."""
+    fit = _fitting_scale(atoms, edges)
+    if supercell_size is not None:
+        scale = _repetitions(supercell_size)
+        if any(n < m for n, m in zip(scale, fit)):
+            raise ValueError(f"supercell_size={scale} is too small for the hops: at least {fit}")
+        return scale
+    return tuple(max(n, m) for n, m in zip(_supercell_scale(atoms.cell, supercell_cutoff), fit))
+
+
+def _repetitions(size):
+    """supercell_size as three positive integers."""
+    if np.ndim(size) != 1 or len(size) != 3 or any(int(n) != n or n < 1 for n in size):
+        raise ValueError(f"supercell_size must be three repetitions (na, nb, nc), got {size!r}; "
+                         f"for a thickness in Angstrom use supercell_cutoff")
+    return tuple(int(n) for n in size)
+
+
 def _segment_distance(points, start, end, cell):
     """Distance of points to the segment start-end under the minimum image convention."""
     d = _mic(np.asarray(points) - start, np.asarray(cell))
@@ -59,7 +86,8 @@ class Hop:
         edges of ions' Percolator: [source, target, ox, oy, oz].
 
     supercell_cutoff : float, default 8.0
-        The supercell is at least this thick in every direction (Angstrom).
+        The supercell is at least this thick in every direction (Angstrom), and larger where
+        the hop would be longer than half of it.
 
     supercell_size : tuple, optional
         Explicit repetitions (na, nb, nc); overrides supercell_cutoff.
@@ -111,10 +139,8 @@ class Hop:
         if int(self.atoms.numbers[self.target]) != self.specie:
             raise ValueError(f"source ({self.atoms[self.source].symbol}) and target "
                              f"({self.atoms[self.target].symbol}) are different species")
-        if self.supercell_size is not None:
-            self.scale = tuple(int(n) for n in self.supercell_size)
-        else:
-            self.scale = _supercell_scale(self.atoms.cell, self.supercell_cutoff)
+        self.scale = _choose_scale(self.atoms, [(self.source, self.target, *self.offset)],
+                                   self.supercell_cutoff, self.supercell_size)
         self._build()
 
     def _build(self):
@@ -337,7 +363,8 @@ class Hops:
         every result keeps this order. ``Hops.from_voronoi`` finds them from the Voronoi neighbours.
 
     supercell_cutoff: float, 8.0 by default
-        the supercell is at least this thick in every direction (Angstrom)
+        the supercell is at least this thick in every direction (Angstrom), and larger where
+        a hop would be longer than half of it
 
     supercell_size: tuple, optional
         explicit repetitions (na, nb, nc); overrides supercell_cutoff
@@ -387,10 +414,7 @@ class Hops:
         self.atoms = atoms.copy()
         self.specie = _as_atomic_number(specie)
         self.edges = np.array(edges, dtype=int).reshape(-1, 5)
-        if supercell_size is not None:
-            self.scale = tuple(int(n) for n in supercell_size)
-        else:
-            self.scale = _supercell_scale(self.atoms.cell, supercell_cutoff)
+        self.scale = _choose_scale(self.atoms, self.edges, supercell_cutoff, supercell_size)
         self.resolution = resolution
         self.r_min = r_min
         self.tube = tube

@@ -14,7 +14,7 @@ from .energy_map import EnergyMap
 from .path import Path
 from .hops import Hop, Hops, HopMap, HopMaps
 from .models import BVSE, bvse
-from . import predictors
+from . import network, predictors, view
 
 __all__ = ["Grid", "EnergyMap", "Path", "Hop", "Hops", "HopMap", "HopMaps",
-           "BVSE", "bvse", "predictors", "__version__"]
+           "BVSE", "bvse", "network", "predictors", "view", "__version__"]

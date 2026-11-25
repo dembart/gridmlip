@@ -242,6 +242,7 @@ gridmlip dataset structures.xyz --config dataset.yaml --output datasets/li --chu
 - [Bond valence site energy](notebooks/02_bvse.ipynb)
 - [Training dataset for an MLIP](notebooks/03_dataset.ipynb)
 - [Interactive view of energy maps](notebooks/04_view.ipynb)
+- [Li transport in LiFePO4 and LiCoO2: maps, hops, NEB inputs](notebooks/05_lfp_lco.ipynb) (Colab)
 
 ## How to cite
 

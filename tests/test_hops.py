@@ -228,3 +228,22 @@ def test_hop_view_centers_the_hop_and_plays_the_path(lfp_hops):
     shown = [float(f["name"].split("E = ")[1].split()[0]) for f in tab["frames"]]
     assert np.allclose(shown, path.energies, atol=1e-4)
     assert shown[0] == pytest.approx(path.e_start, abs=1e-4) and max(shown) <= path.level + 1e-4
+
+
+def test_supercell_size_must_be_repetitions():
+    with pytest.raises(ValueError, match="supercell_cutoff"):
+        Hops.from_voronoi(lifepo4(), "Li", supercell_size=10.0)
+    with pytest.raises(ValueError, match="three repetitions"):
+        Hop(lifepo4(), 0, 2, (0, -1, 0), supercell_size=(1, 2))
+    assert Hop(lifepo4(), 0, 2, (0, -1, 0), supercell_size=(1, 2, 2)).scale == (1, 2, 2)
+
+
+def test_small_supercell_cutoff_is_enlarged_only_where_hops_do_not_fit():
+    atoms = lifepo4()
+    hops = Hops.from_voronoi(atoms, "Li", supercell_cutoff=3.0, resolution=0.4)
+    assert hops.scale == (1, 1, 2)
+    assert Hops.from_voronoi(atoms, "Li", resolution=0.4).scale == (1, 2, 2)
+    with pytest.raises(ValueError, match="too small for the hops"):
+        Hops.from_voronoi(atoms, "Li", supercell_size=(1, 1, 1))
+    maps = hops.evaluate(BVSE("Li+", verbose=False))
+    assert np.all(np.isfinite(maps.barriers))
