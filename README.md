@@ -177,8 +177,10 @@ one per symmetry class; the network must percolate in `dim` dimensions (3 by def
 
 ```python
 hops = gm.Hops.from_voronoi(atoms, "Li", min_face=0.02, max_length=None, dim=3, tube=2.5)
+hops = gm.Hops.from_mincut_maxdim(atoms, "Li", bottleneck_radius=0.5)   # or ions' shortest cutoff of the highest dimensionality
 maps = hops.evaluate(gm.BVSE("Li+"))
 maps.percolation_barriers()                     # each hop spans min(site energies) .. connecting level
+maps[0].view(path=maps[0].path(n_images=9))     # one hop, centered, its NEB images as a trajectory
 
 # NEB energies instead of the grid estimates (one per hop of `hops`)
 gm.network.percolation_barriers(hops.network, emins[hops.inverse], emaxs[hops.inverse])

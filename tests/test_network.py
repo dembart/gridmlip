@@ -72,6 +72,17 @@ def test_hops_from_voronoi_and_percolation():
     assert b["e1d"] == pytest.approx(maps.barriers.min())
 
 
+def test_hops_from_mincut_maxdim():
+    from ions import Percolator
+    atoms = lifepo4()
+    hops = Hops.from_mincut_maxdim(atoms, 3, bottleneck_radius=0.5, upper_bound=6.3, resolution=0.4)
+    pl = Percolator(atoms, "Li", upper_bound=6.3)
+    cutoff, dim = pl.mincut_maxdim(0.5)
+    assert np.array_equal(hops.edges, pl.unique_edges(cutoff, 0.5)) and hops.periodicity == dim == 3
+    with pytest.raises(ValueError, match="No percolating network"):
+        Hops.from_mincut_maxdim(atoms, "Li", upper_bound=2.0)
+
+
 def test_hops_network_percolation_matches_ions(lfp_ions):
     pl, cutoff, edges = lfp_ions
     hops = Hops(lifepo4(), "Li", edges, resolution=0.3)

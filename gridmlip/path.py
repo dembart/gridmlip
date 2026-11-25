@@ -37,6 +37,9 @@ class Path:
     route: np.ndarray of shape (m, 3)
         the route through mesh points before resampling
 
+    energies: np.ndarray of shape (n_images,)
+        map energies at the points, interpolated along the route (eV)
+
     hop: Hop, optional
         the hop the path belongs to; needed for ``images()`` and ``write()``
 
@@ -53,6 +56,7 @@ class Path:
     e_end: float
     saddle: np.ndarray
     route: np.ndarray
+    energies: np.ndarray
     hop: object = None
 
     def __repr__(self):
@@ -225,6 +229,8 @@ def minimum_energy_path(values, cell, start, end, n_images=12, well_radius=0.5, 
     targets = np.linspace(0.0, arc[-1], n_images)
     points = np.array([[np.interp(x, arc, route[:, c]) for c in range(3)] for x in targets])
     points[0], points[-1] = start, end
+    along = np.concatenate([[energies[s]], energies[nodes[1:-1]], [energies[t]]]) if len(nodes) > 2 \
+        else np.array([energies[s], energies[t]])
 
     return Path(
         points=points,
@@ -234,4 +240,5 @@ def minimum_energy_path(values, cell, start, end, n_images=12, well_radius=0.5, 
         e_end=float(energies[t]),
         saddle=unwrapped[nodes[int(np.argmax(energies[nodes]))]],
         route=route,
+        energies=np.interp(targets, arc, along),
     )

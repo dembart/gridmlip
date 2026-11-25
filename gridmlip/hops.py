@@ -5,8 +5,10 @@ from pathlib import Path as _FilePath
 import numpy as np
 from tqdm import tqdm
 
+from ase.calculators.singlepoint import SinglePointCalculator
+from ase.data import chemical_symbols
 from ase.io import write
-from ions import Edge
+from ions import Edge, Percolator
 from ions.geometry import repeated_supercell
 
 from .grid import Grid, _as_atomic_number
@@ -271,6 +273,51 @@ class HopMap(EnergyMap):
         path = super().path(start, end, n_images=n_images, well_radius=well_radius, margin=margin)
         return dataclasses.replace(path, hop=self.hop)
 
+    def view(self, path=None, level=None, **kwargs):
+        """
+        Interactive 3D view of the hop, shifted so that the middle of the hop is at the cell center
+        (by whole mesh steps, so the map and the atoms stay aligned); the map itself is unchanged.
+
+        Parameters
+        ----------
+        path: Path, optional
+            its NEB images are shown as a trajectory over the map, each frame with its map energy
+            (eV), e.g. ``hmap.path(n_images=9)``
+
+        level: float, optional
+            isosurface level in eV above the minimum; default: the hop's connecting level + 0.01 eV
+
+        **kwargs
+            any gridmlip.view.view option
+
+        Returns
+        -------
+        View
+        """
+        from .view import payload, structure_view
+        cell = np.asarray(self.cell)
+        n = np.array(self.shape)
+        middle = np.linalg.solve(cell.T, (self.hop.p0 + self.hop.p1) / 2)
+        steps = np.round((0.5 - middle) * n).astype(int)
+        shift = (steps / n) @ cell
+        atoms = self.atoms.copy()
+        atoms.positions += shift
+        atoms.wrap()
+        shown = EnergyMap(np.roll(self.values, tuple(steps), axis=(0, 1, 2)), atoms, specie=self.specie, info=self.info)
+        top = (path if path is not None else self.path(n_images=2)).level - self.values[np.isfinite(self.values)].min()
+        args = payload(shown, level=top + 0.01 if level is None else level)
+        args["presets"] = {"hop": top}
+        args.update(kwargs)
+        structure = args.pop("structure")
+        if path is not None:
+            structure = []
+            for image, e in zip(path.images(), path.energies):
+                image.positions += shift
+                image.wrap()
+                image.calc = SinglePointCalculator(image, energy=float(e))
+                structure.append(image)
+        return structure_view(structure, **args)
+
 
 class Hops:
     """
@@ -380,6 +427,46 @@ class Hops:
         edges = _network.voronoi_edges(atoms, specie, min_face=min_face, max_length=max_length, dim=dim)
         unique, _ = _network.unique_edges(atoms, edges, symprec=symprec)
         return cls(atoms, specie, unique, symprec=symprec, **kwargs)
+
+    @classmethod
+    def from_mincut_maxdim(cls, atoms, specie, bottleneck_radius: float = 0.5, upper_bound: float = 8.0,
+                           method: str = "naive", symprec: float = 1e-3, **kwargs):
+        """
+        Hops of the shortest jump cutoff giving the highest percolation dimensionality (ions'
+        ``Percolator.mincut_maxdim``), one per symmetry class (``Percolator.unique_edges``).
+
+        Parameters
+        ----------
+        bottleneck_radius: float, 0.5 by default
+            minimum distance between a hop (line segment) and the framework (Angstrom)
+
+        upper_bound: float, 8.0 by default
+            longest hop considered (Angstrom)
+
+        method: str, 'naive' by default
+            'naive' or 'symop', see ``Percolator.unique_edges``
+
+        symprec: float, 1e-3 by default
+            symmetry tolerance
+
+        **kwargs
+            any Hops option: supercell_cutoff, resolution, r_min, tube, ...
+
+        Example
+        -------
+        hops = Hops.from_mincut_maxdim(atoms, "Li", bottleneck_radius=0.5)
+        hops.evaluate(gridmlip.BVSE("Li+")).percolation_barriers()
+        """
+        symbol = chemical_symbols[_as_atomic_number(specie)]
+        pl = Percolator(atoms, symbol, upper_bound=upper_bound, symprec=symprec)
+        try:
+            cutoff, dim = pl.mincut_maxdim(bottleneck_radius)
+        except RuntimeError:
+            dim = 0
+        if dim == 0:
+            raise ValueError(f"No percolating network of {symbol} hops up to upper_bound={upper_bound} A "
+                             f"with bottleneck_radius={bottleneck_radius} A")
+        return cls(atoms, specie, pl.unique_edges(cutoff, bottleneck_radius, method=method), symprec=symprec, **kwargs)
 
     def __len__(self):
         return len(self.hops)

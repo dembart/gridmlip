@@ -207,3 +207,24 @@ def test_bvse_per_element_oxidation_states_need_no_assignment(unit_cell_only_ass
     Hop(atoms, s, t, o).evaluate(BVSE("Li+", oxidation_states={"Li": 1, "Fe": 2, "P": 5, "O": -2}, verbose=False),
                                  resolution=0.3)
     assert calls == []
+
+
+def test_hop_view_centers_the_hop_and_plays_the_path(lfp_hops):
+    import re
+    hmap = lfp_hops[0].evaluate(BVSE("Li+", verbose=False), resolution=0.3)
+    path = hmap.path(n_images=5)
+    v = hmap.view(path=path)
+    d = json.loads(re.search(r"/\*chucha-data\*/(\{.*?\})/\*end-data\*/", v.html, re.S).group(1).replace("<\\/", "</"))
+    tab = d["tabs"][0]
+    cell = np.array(tab["volumes"][0]["cell"])
+    moving = lfp_hops[0].moving
+    xyz = np.array([f["xyz"][moving] for f in tab["frames"]])
+    frac = np.linalg.solve(cell.T, xyz.T).T
+    assert len(frac) == 5 and np.all((frac > 0) & (frac < 1))
+    assert np.allclose((frac[0] + frac[-1]) / 2, 0.5, atol=0.5 / min(hmap.shape))
+    assert np.allclose(np.diff(xyz, axis=0), np.diff(path.points, axis=0), atol=1e-4)
+    vmin = hmap.values[np.isfinite(hmap.values)].min()
+    assert tab["volumes"][0]["level"] == pytest.approx(path.level - vmin + 0.01)
+    shown = [float(f["name"].split("E = ")[1].split()[0]) for f in tab["frames"]]
+    assert np.allclose(shown, path.energies, atol=1e-4)
+    assert shown[0] == pytest.approx(path.e_start, abs=1e-4) and max(shown) <= path.level + 1e-4
