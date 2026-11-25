@@ -1,10 +1,3 @@
-"""
-Hop network of a mobile sublattice: Voronoi neighbours, symmetry-equivalent hops, periodicity and
-percolation barriers from per-hop energies.
-
-Edges are [source, target, ox, oy, oz]: the hop from site ``source`` of the unit cell to site
-``target`` translated by the lattice vector (ox, oy, oz), as in ions' Percolator.
-"""
 from collections import deque
 
 import numpy as np
@@ -15,8 +8,6 @@ from .grid import _as_atomic_number
 
 __author__ = "Artem Dembitskiy"
 
-
-# ------------------------------------------------------------------ Voronoi neighbours
 
 def _polygon_area(vertices, normal):
     """Area of a planar convex polygon given its vertices in any order."""
@@ -55,7 +46,7 @@ def _voronoi_faces(points, cell, site):
         me = int(np.flatnonzero((idx == site) & ~off.any(axis=1))[0])
         try:
             vor = Voronoi(pos)
-        except QhullError:                       # too few images to span 3D (e.g. one layer): take more
+        except QhullError:
             radius *= 1.5
             continue
         region = vor.regions[vor.point_region[me]]
@@ -78,6 +69,8 @@ def _voronoi_faces(points, cell, site):
 def voronoi_edges(atoms, specie, min_face: float = 0.02, max_length: float | None = None, dim: int = 3):
     """
     Hops between Voronoi neighbours of the mobile sublattice (the framework is ignored).
+    A hop [source, target, ox, oy, oz] goes from site ``source`` of the unit cell to site ``target``
+    translated by the lattice vector (ox, oy, oz), as in ions' Percolator.
 
     Parameters
     ----------
@@ -116,7 +109,7 @@ def voronoi_edges(atoms, specie, min_face: float = 0.02, max_length: float | Non
                 continue
             s_, t_ = int(sites[k]), int(sites[t])
             kept.add((s_, t_) + off)
-            kept.add((t_, s_) + tuple(-x for x in off))     # the face is shared: keep both directions
+            kept.add((t_, s_) + tuple(-x for x in off))
     edges = np.array(sorted(kept), dtype=int).reshape(-1, 5)
     d = periodicity(edges)
     if d < dim:
@@ -124,8 +117,6 @@ def voronoi_edges(atoms, specie, min_face: float = 0.02, max_length: float | Non
                          f"raise max_length or pass dim={d}")
     return edges
 
-
-# ------------------------------------------------------------------ periodicity
 
 def _component_dims(edges):
     """For every edge, the number of independent lattice translations of its connected component."""
@@ -172,8 +163,6 @@ def periodicity(edges):
     dims = _component_dims(edges)
     return int(dims.max()) if dims.size else 0
 
-
-# ------------------------------------------------------------------ symmetry
 
 def _site_mapper(atoms, symprec):
     frac = atoms.get_scaled_positions(wrap=False)
@@ -223,7 +212,7 @@ def expand_edges(atoms, edges, symprec: float = 1e-3):
     label = {}
     for i, e in enumerate(edges):
         for image in _images(e, frac, rotations, translations, locate):
-            label.setdefault(image, i)          # equivalent input edges: the first one stands for them
+            label.setdefault(image, i)
     network = np.array(sorted(label), dtype=int).reshape(-1, 5)
     return network, np.array([label[tuple(e)] for e in network], dtype=int)
 
@@ -249,8 +238,6 @@ def unique_edges(atoms, edges, symprec: float = 1e-3):
         inverse.append(label[key])
     return np.array(unique, dtype=int).reshape(-1, 5), np.array(inverse, dtype=int)
 
-
-# ------------------------------------------------------------------ percolation
 
 def percolation_barriers(network, emins, emaxs):
     """
