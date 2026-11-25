@@ -212,16 +212,14 @@ result = run(path.images())                                # atoms need prepare_
 ## Interactive view
 
 ```python
-emap.view()
-emap.view(level=0.6, supercell=(1, 2, 2), theme="light")
-emap.view().save("map.html")
+emap.view()                                                # inline in Jupyter
+emap.view(level=0.6, supercell=(1, 2, 2), theme="light", hide_bonds=["Li"], polyhedra=["Fe", "P"])
+emap.view().save("map.html")                               # standalone page, works offline
 emap.view().open()
-```
 
-Inline in Jupyter or as a standalone page that works offline: VESTA-style atoms, bonds and polyhedra, and the
-map as an isosurface starting at the 1D percolation barrier with 1D/2D/3D presets. Options include
-`style="soft"`, `hide=["Li"]`, `hide_bonds=["Li"]`, `polyhedra=["Fe", "P"]`, `along="c"`.
-`gridmlip.view.structure_view(atoms)` shows a structure (or a CIF, POSCAR, CHGCAR, ... file) without a map.
+from gridmlip.view import structure_view
+structure_view(atoms)                                      # a structure or a CIF, POSCAR, ... file
+```
 
 ## Defect configurations
 
